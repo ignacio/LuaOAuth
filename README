@@ -3,8 +3,11 @@ Lua OAuth
 
 A Lua client library for OAuth 1.0 enabled servers.
 
-This is an adaptation of [Twitter OAuth Authentication Routines in Lua, for Lightroom Plugins][1], with Lightroom's 
-code replaced by other libraries (i.e. [LuaSec][2], [LuaSocket][3], etc) and with sha-1 calculations done with [LuaCrypto][4].
+This is an adaptation of Jeffrey Friedl's [Twitter OAuth Authentication Routines in Lua, for Lightroom Plugins][1], 
+with Lightroom's code replaced by other libraries (i.e. [LuaSec][2], [LuaSocket][3], etc) and with HMAC-SHA1 calculations 
+done with [LuaCrypto][4] instead of [plain Lua][6]
+
+Most of the code was taken from [1]
 
 Usage
 =====
@@ -32,3 +35,4 @@ Once you have been authorized, you can perform requests:
 [3]: http://w3.impa.br/~diego/software/luasocket/
 [4]: http://luacrypto.luaforge.net/
 [5]: http://echo.lab.madgex.com/
+[6]: http://regex.info/blog/lua/sha1
