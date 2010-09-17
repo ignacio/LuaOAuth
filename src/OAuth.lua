@@ -243,13 +243,6 @@ end
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
 -- @return a table containing the returned values from the server if succesfull or throws an error otherwise
--- @param url is the url to request
--- @param method is the http method (GET, POST, etc)
--- @param headers are the supplied http headers as a table
--- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
---   or a string (or something that can be converted to a string). In that case, you must supply the Content-Type.
--- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider 
---   does not support the 'Authorization' header.
 function RequestToken(self, arguments, headers)
 	local args = {
 		oauth_consumer_key = self.m_consumer_key,
@@ -291,7 +284,6 @@ end
 -- Builds the URL used to issue a request to the Service Provider's User Authorization URL
 -- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
--- @param headers is an optional table with http headers to be sent in the request
 -- @return the fully constructed URL, with both OAuth and custom parameters encoded, and the value of the 'Authorization' header
 function BuildAuthorizationUrl(self, arguments)
 	local args = {
@@ -399,7 +391,7 @@ end
 
 
 --
--- After retriving an access token, this method is used to issue properly authenticated requests.
+-- After retrieving an access token, this method is used to issue properly authenticated requests.
 -- (see http://oauth.net/core/1.0a/#anchor13)
 -- @param method is the http method (GET, POST, etc)
 -- @param url is the url to request
