@@ -1,5 +1,5 @@
 package = "OAuth"
-version = "sscm-1"
+version = "scm-1"
 source = {
 	url = "git://github.com/ignacio/LuaOAuth.git",
 	branch = "master"
