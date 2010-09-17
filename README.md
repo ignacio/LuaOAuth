@@ -7,7 +7,7 @@ This is an adaptation of Jeffrey Friedl's [Twitter OAuth Authentication Routines
 with Lightroom's code replaced by other libraries (i.e. [LuaSec][2], [LuaSocket][3], etc) and with HMAC-SHA1 calculations 
 done with [LuaCrypto][4] instead of [plain Lua][6]
 
-Most of the code was taken from [1]
+Most of the code was taken from [Jeffrey Friedl's blog][1]
 
 Usage
 =====
