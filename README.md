@@ -4,9 +4,9 @@ A Lua client library for OAuth 1.0 enabled servers.
 
 This is an adaptation of Jeffrey Friedl's [Twitter OAuth Authentication Routines in Lua, for Lightroom Plugins][1], 
 with Lightroom's code replaced by other libraries (i.e. [LuaSec][2], [LuaSocket][3], etc) and with HMAC-SHA1 calculations 
-done with [LuaCrypto][4] instead of [plain Lua][6]
+done with [LuaCrypto][4] instead of [plain Lua][6].
 
-Most of the code was taken from [Jeffrey Friedl's blog][1]
+Most of the code was taken from [Jeffrey Friedl's blog][1].
 
 ## Usage #
 
@@ -37,10 +37,11 @@ For instance, let's assume that you've created the application "MyTestApp", your
 consumer secret is 'consumer_secret'. Your Twitter user is 'johncleese'.
 
 Now, you need to authorize the application. Let's use the "Out of band" (OOB) method. With this method, we will:
- - get a "Request Token" so we can build an authorization url. 
- - then we'll navigate with our browser to that url and we'll enter our Twitter username and password (if we weren't logged in yet).
- - then we'll authorize the application. A PIN will appear on the screen.
- - with that PIN, we'll complete the process so we get an "Access Token".
+
+- get a "Request Token" so we can build an authorization url. 
+- then we'll navigate with our browser to that url and we'll enter our Twitter username and password (if we weren't logged in yet).
+- then we'll authorize the application. A PIN will appear on the screen.
+- with that PIN, we'll complete the process so we get an "Access Token".
 
 Copy the following in a script and run it from the console. Follow the instructions.
 
