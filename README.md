@@ -17,6 +17,7 @@ uses the test service provided by [madgex.com][5].
 Basically, you create an OAuth client with your consumer key and secret, providing the OAuth service's endpoints URLs (i.e. 
 where to request a token, where to get an access token, etc).
 
+    local OAuth = require "OAuth"
     local client = OAuth.new("key", "secret", {
     	RequestToken = "http://echo.lab.madgex.com/request-token.ashx", 
     	AccessToken = "http://echo.lab.madgex.com/access-token.ashx"
