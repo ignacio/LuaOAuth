@@ -5,7 +5,9 @@ local OAuth = require "OAuth"
 local console = require "lunit-console"
 
 require "echo_lab_madgex_com"
-require "twitter"
+--require "twitter"
+--require "dev_k42b3"
+require "termie"
 
 -- eventos posibles:
 -- begin, done, fail, err, run, pass
