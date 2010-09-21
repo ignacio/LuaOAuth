@@ -17,6 +17,14 @@ local moduleMT = {
 	__index = _M
 }
 
+local m_valid_http_methods = {
+	GET = true,
+	HEAD = true,
+	POST = true,
+	PUT = true,
+	DELETE = true
+}
+
 -- each instance has this fields
 -- m_supportsAuthHeader
 -- m_consumer_secret
@@ -59,13 +67,14 @@ local function oauth_encode(val)
 end
 
 --
--- Given a url endpoint, a GET/POST method, and a table of key/value args, build the query string and sign it, returning the oauth_signature and the query string.
+-- Given a url endpoint, a valid Http method, and a table of key/value args, build the query string and sign it, 
+-- returning the oauth_signature, the query string and the Authorization header (if supported)
 --
 -- The args should also contain an 'oauth_token_secret' item, except for the initial token request.
 -- See: http://dev.twitter.com/pages/auth#signing-requests
 --
 local function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authRealm)
-	assert(httpMethod == "GET" or httpMethod == "POST")
+	assert(m_valid_http_methods[httpMethod], "method not supported")
 	
 	local consumer_secret = self.m_consumer_secret
 	local token_secret = oauth_token_secret or ""
@@ -123,15 +132,18 @@ local function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, au
 		
 	local oauth_signature = oauth_encode(hmac_b64)
 	
-	-- Build the 'Authorization' header
-	local oauth_headers = { ([[OAuth realm="%s"]]):format(authRealm or "") }
-	for k,v in pairs(arguments) do
-		if k:match("^oauth_") then
-			table.insert(oauth_headers, k .. "=\"" .. oauth_encode(v) .. "\"")
+	local oauth_headers
+	-- Build the 'Authorization' header if the provider supports it
+	if self.m_supportsAuthHeader then
+		oauth_headers = { ([[OAuth realm="%s"]]):format(authRealm or "") }
+		for k,v in pairs(arguments) do
+			if k:match("^oauth_") then
+				table.insert(oauth_headers, k .. "=\"" .. oauth_encode(v) .. "\"")
+			end
 		end
+		table.insert(oauth_headers, "oauth_signature=\"" .. oauth_signature .. "\"")
+		oauth_headers = table.concat(oauth_headers, ", ")
 	end
-	table.insert(oauth_headers, "oauth_signature=\"" .. oauth_signature .. "\"")
-	oauth_headers = table.concat(oauth_headers, ", ")
 	
 	return oauth_signature, query_string_except_signature .. '&oauth_signature=' .. oauth_signature, oauth_headers
 end
@@ -160,7 +172,7 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 	
 	local response_body = {}
 	local ok, response_code, response_headers, response_status_line
-	if method == "POST" then
+	if method == "POST" or method == "PUT" then
 		local source
 		if type(arguments) == "table" then
 			headers["Content-Type"] = "application/x-www-form-urlencoded"
@@ -179,7 +191,7 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 		else
 			if arguments then
 				if not self.m_supportsAuthHeader then
-					error("can't send POST body if the server does not support 'Authorization' header")
+					error("can't send " .. method .. " body if the server does not support 'Authorization' header")
 				end
 				local string_data = tostring(arguments)
 				if string_data ~= "nil" then
@@ -196,7 +208,7 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 		if url:match("^https://") then
 			ok, response_code, response_headers, response_status_line = Https.request{
 				url = url,
-				method = "POST",
+				method = method,
 				headers = headers,
 				source = source,
 				sink = Ltn12.sink.table(response_body)
@@ -204,7 +216,7 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 		elseif url:match("^http://") then
 			ok, response_code, response_headers, response_status_line = Http.request{
 				url = url,
-				method = "POST",
+				method = method,
 				headers = headers,
 				source = source,
 				sink = Ltn12.sink.table(response_body)
@@ -212,11 +224,21 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 		else
 			error("unsupported scheme " .. tostring( url:match("^([^:])") ) )
 		end
-	else
-		-- GET
+	elseif method == "GET" or method == "HEAD" or method == "DELETE" then
+		if self.m_supportsAuthHeader then
+			if arguments then
+				local body = {}
+				for k,v in pairs(arguments) do
+					table.insert(body, Url.escape(tostring(k)) .. "=" .. Url.escape(tostring(v)))
+				end
+				url = url .. "?" .. table.concat(body, "&")
+			end
+		else
+			url = url .. "?" .. post_body
+		end
 		ok, response_code, response_headers, response_status_line = Http.request{
-			url = url .. "?" .. post_body,
-			method = "GET",
+			url = url,
+			method = method,
 			headers = headers,
 			sink = Ltn12.sink.table(response_body)
 		}
@@ -418,7 +440,7 @@ function PerformRequest(self, method, url, arguments, headers)
 	end
 	args.oauth_token_secret = nil	-- this is never sent
 	
-	local oauth_signature, post_body, authHeader = Sign(self, "POST", url, args, oauth_token_secret)
+	local oauth_signature, post_body, authHeader = Sign(self, method, url, args, oauth_token_secret)
 	local headers = merge({}, headers)
 	if self.m_supportsAuthHeader then
 		headers["Authorization"] = authHeader
@@ -479,7 +501,7 @@ function new(consumer_key, consumer_secret, endpoints, params)
 	}
 	
 	if type(params.UseAuthHeaders) == "boolean" then
-		m_supportsAuthHeader = params.UseAuthHeaders
+		newInstance.m_supportsAuthHeader = params.UseAuthHeaders
 	end
 	
 	for k,v in pairs(endpoints or {}) do
