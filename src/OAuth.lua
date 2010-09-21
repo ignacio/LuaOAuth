@@ -170,9 +170,43 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 		end
 	end
 	
+	-- this method screams "refactor me!"
 	local response_body = {}
 	local ok, response_code, response_headers, response_status_line
-	if method == "POST" or method == "PUT" then
+	if method == "PUT" then
+		local source
+		if type(arguments) == "table" then
+			error("unsupported table argument for put")
+		else
+			local string_data = tostring(arguments)
+			if string_data ~= "nil" then
+				headers["Content-Length"] = tostring(#string_data)
+				source = Ltn12.source.string(string_data)
+			else
+				error("data must be something convertible to a string")
+			end
+		end
+		if url:match("^https://") then
+			ok, response_code, response_headers, response_status_line = Https.request{
+				url = url,
+				method = method,
+				headers = headers,
+				source = source,
+				sink = Ltn12.sink.table(response_body)
+			}
+		elseif url:match("^http://") then
+			ok, response_code, response_headers, response_status_line = Http.request{
+				url = url,
+				method = method,
+				headers = headers,
+				source = source,
+				sink = Ltn12.sink.table(response_body)
+			}
+		else
+			error("unsupported scheme " .. tostring( url:match("^([^:])") ) )
+		end
+	
+	elseif method == "POST" then
 		local source
 		if type(arguments) == "table" then
 			headers["Content-Type"] = "application/x-www-form-urlencoded"
@@ -432,14 +466,18 @@ function PerformRequest(self, method, url, arguments, headers)
 		oauth_timestamp = generate_timestamp(),
 		oauth_version = "1.0"
 	}
-	args = merge(args, arguments)
-	args.oauth_token = (arguments and arguments.oauth_token) or self.m_oauth_token or error("no oauth_token")
-	local oauth_token_secret = (arguments and arguments.oauth_token_secret) or self.m_oauth_token_secret or error("no oauth_token_secret")
-	if arguments then
+	local arguments_is_table = (type(arguments) == "table")
+	if arguments_is_table then
+		args = merge(args, arguments)
+	end
+	args.oauth_token = (arguments_is_table and arguments.oauth_token) or self.m_oauth_token or error("no oauth_token")
+	local oauth_token_secret = (arguments_is_table and arguments.oauth_token_secret) or self.m_oauth_token_secret or error("no oauth_token_secret")
+	if arguments_is_table then
 		arguments.oauth_token_secret = nil	-- this is never sent
 	end
 	args.oauth_token_secret = nil	-- this is never sent
 	
+	--local oauth_signature, post_body, authHeader = Sign(self, "POST", url, args, oauth_token_secret)
 	local oauth_signature, post_body, authHeader = Sign(self, method, url, args, oauth_token_secret)
 	local headers = merge({}, headers)
 	if self.m_supportsAuthHeader then
