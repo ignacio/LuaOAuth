@@ -1,8 +1,6 @@
 local Http = require "socket.http"
-local Ssl = ssl
 local Https = require "ssl.https"
 local Base64 = require "base64"
-local Uuid = require "uuid"
 local Ltn12 = require "ltn12"
 local Url = require "socket.url"
 local Crypto = require "crypto"
@@ -10,6 +8,7 @@ local Crypto = require "crypto"
 local table, string, os, print = table, string, os, print
 local error, assert = error, assert
 local pairs, tostring, type, next, setmetatable = pairs, tostring, type, next, setmetatable
+local math = math
 
 module((...))
 
@@ -53,17 +52,28 @@ local function generate_timestamp()
 end
 
 --
--- Generates a nonce (number used once). This just creates a new uuid.
+-- Generates a nonce (number used once).
+-- I'm not base64 encoding the resulting nonce because some providers rejects them (i.e. echo.lab.madgex.com)
 local function generate_nonce()
-	return Uuid.new()
+	return Crypto.hmac.digest("sha1", tostring(math.random()) .. "random" .. tostring(os.time()),"keyyyy")
 end
 
 --
 -- Like URL-encoding, but following OAuth's specific semantics
 local function oauth_encode(val)
 	return val:gsub('[^-._~a-zA-Z0-9]', function(letter)
-											return string.format("%%%02x", letter:byte()):upper()
-										end)
+		return string.format("%%%02x", letter:byte()):upper()
+	end)
+end
+
+--
+-- Encodes the key-value pairs of a table according the application/x-www-form-urlencoded content type.
+local function url_encode_arguments(arguments)
+	local body = {}
+	for k,v in pairs(arguments) do
+		body[#body + 1] = Url.escape(tostring(k)) .. "=" .. Url.escape(tostring(v))
+	end
+	return table.concat(body, "&")
 end
 
 --
@@ -74,7 +84,7 @@ end
 -- See: http://dev.twitter.com/pages/auth#signing-requests
 --
 local function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authRealm)
-	assert(m_valid_http_methods[httpMethod], "method not supported")
+	assert(m_valid_http_methods[httpMethod], "method '" .. httpMethod .. "' not supported")
 	
 	local consumer_secret = self.m_consumer_secret
 	local token_secret = oauth_token_secret or ""
@@ -172,111 +182,72 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 	
 	-- this method screams "refactor me!"
 	local response_body = {}
-	local ok, response_code, response_headers, response_status_line
+	local request_constructor = {
+		url = url,
+		method = method,
+		headers = headers,
+		sink = Ltn12.sink.table(response_body)
+	}
+	
 	if method == "PUT" then
-		local source
 		if type(arguments) == "table" then
-			error("unsupported table argument for put")
+			error("unsupported table argument for PUT")
 		else
 			local string_data = tostring(arguments)
-			if string_data ~= "nil" then
-				headers["Content-Length"] = tostring(#string_data)
-				source = Ltn12.source.string(string_data)
-			else
+			if string_data == "nil" then
 				error("data must be something convertible to a string")
 			end
-		end
-		if url:match("^https://") then
-			ok, response_code, response_headers, response_status_line = Https.request{
-				url = url,
-				method = method,
-				headers = headers,
-				source = source,
-				sink = Ltn12.sink.table(response_body)
-			}
-		elseif url:match("^http://") then
-			ok, response_code, response_headers, response_status_line = Http.request{
-				url = url,
-				method = method,
-				headers = headers,
-				source = source,
-				sink = Ltn12.sink.table(response_body)
-			}
-		else
-			error("unsupported scheme " .. tostring( url:match("^([^:])") ) )
+			request_constructor.headers["Content-Length"] = tostring(#string_data)
+			request_constructor.source = Ltn12.source.string(string_data)
 		end
 	
 	elseif method == "POST" then
-		local source
 		if type(arguments) == "table" then
-			headers["Content-Type"] = "application/x-www-form-urlencoded"
-			local body = {}
+			request_constructor.headers["Content-Type"] = "application/x-www-form-urlencoded"
 			if not self.m_supportsAuthHeader then
-				headers["Content-Length"] = tostring(#post_body)
-				source = Ltn12.source.string(post_body)
+				-- send all parameters (oauth + custom) in the body
+				request_constructor.headers["Content-Length"] = tostring(#post_body)
+				request_constructor.source = Ltn12.source.string(post_body)
 			else
-				for k,v in pairs(arguments) do
-					table.insert(body, Url.escape(tostring(k)) .. "=" .. Url.escape(tostring(v)))
-				end
-				source = table.concat(body, "&")
-				headers["Content-Length"] = tostring(#source)
-				source = Ltn12.source.string(source)
+				-- encode the custom parameters and send them in the body
+				local source = url_encode_arguments(arguments)
+				request_constructor.headers["Content-Length"] = tostring(#source)
+				request_constructor.source = Ltn12.source.string(source)
 			end
-		else
-			if arguments then
-				if not self.m_supportsAuthHeader then
-					error("can't send " .. method .. " body if the server does not support 'Authorization' header")
-				end
-				local string_data = tostring(arguments)
-				if string_data ~= "nil" then
-					headers["Content-Length"] = tostring(#string_data)
-					source = Ltn12.source.string(string_data)
-				else
-					error("data must be something convertible to a string")
-				end
-			else
-				headers["Content-Length"] = "0"
-				source = nil
+		elseif arguments then
+			if not self.m_supportsAuthHeader then
+				error("can't send POST body if the server does not support 'Authorization' header")
 			end
-		end
-		if url:match("^https://") then
-			ok, response_code, response_headers, response_status_line = Https.request{
-				url = url,
-				method = method,
-				headers = headers,
-				source = source,
-				sink = Ltn12.sink.table(response_body)
-			}
-		elseif url:match("^http://") then
-			ok, response_code, response_headers, response_status_line = Http.request{
-				url = url,
-				method = method,
-				headers = headers,
-				source = source,
-				sink = Ltn12.sink.table(response_body)
-			}
+			local string_data = tostring(arguments)
+			if string_data == "nil" then
+				error("data must be something convertible to a string")
+			end
+			request_constructor.headers["Content-Length"] = tostring(#string_data)
+			request_constructor.source = Ltn12.source.string(string_data)
 		else
-			error("unsupported scheme " .. tostring( url:match("^([^:])") ) )
+			request_constructor.headers["Content-Length"] = "0"
 		end
+		
 	elseif method == "GET" or method == "HEAD" or method == "DELETE" then
 		if self.m_supportsAuthHeader then
 			if arguments then
-				local body = {}
-				for k,v in pairs(arguments) do
-					table.insert(body, Url.escape(tostring(k)) .. "=" .. Url.escape(tostring(v)))
-				end
-				url = url .. "?" .. table.concat(body, "&")
+				request_constructor.url = url .. "?" .. url_encode_arguments(arguments)
 			end
 		else
-			url = url .. "?" .. post_body
+			-- send all parameters (oauth + custom) in the url
+			request_constructor.url = url .. "?" .. post_body
 		end
-		ok, response_code, response_headers, response_status_line = Http.request{
-			url = url,
-			method = method,
-			headers = headers,
-			sink = Ltn12.sink.table(response_body)
-		}
 	end
+	
+	local ok, response_code, response_headers, response_status_line
+	if url:match("^https://") then
+		ok, response_code, response_headers, response_status_line = Https.request(request_constructor)
+	elseif url:match("^http://") then
+		ok, response_code, response_headers, response_status_line = Http.request(request_constructor)
+	else
+		error( ("unsupported scheme '%s'"):format( tostring(url:match("^([^:]+)")) ) )
+	end
+	
 	if not ok then
 		return nil, response_code, response_headers, response_status_line, response_body
 	end
@@ -294,7 +265,7 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 end
 
 -- 
--- Requests an Unauthorized Request Token (6.1) http://oauth.net/core/1.0a/#auth_step1
+-- Requests an Unauthorized Request Token (http://tools.ietf.org/html/rfc5849#section-2.1)
 -- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
@@ -336,7 +307,7 @@ function RequestToken(self, arguments, headers)
 end
 
 -- 
--- Requests Authorization from the User (6.2) http://oauth.net/core/1.0a/#auth_step2
+-- Requests Authorization from the User (http://tools.ietf.org/html/rfc5849#section-2.2)
 -- Builds the URL used to issue a request to the Service Provider's User Authorization URL
 -- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
@@ -393,7 +364,7 @@ end
 
 
 --
--- Exchanges a request token for an Access token (6.3) http://oauth.net/core/1.0a/#auth_step3
+-- Exchanges a request token for an Access token (http://tools.ietf.org/html/rfc5849#section-2.3)
 -- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
@@ -448,7 +419,7 @@ end
 
 --
 -- After retrieving an access token, this method is used to issue properly authenticated requests.
--- (see http://oauth.net/core/1.0a/#anchor13)
+-- (see http://tools.ietf.org/html/rfc5849#section-3)
 -- @param method is the http method (GET, POST, etc)
 -- @param url is the url to request
 -- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
@@ -477,7 +448,6 @@ function PerformRequest(self, method, url, arguments, headers)
 	end
 	args.oauth_token_secret = nil	-- this is never sent
 	
-	--local oauth_signature, post_body, authHeader = Sign(self, "POST", url, args, oauth_token_secret)
 	local oauth_signature, post_body, authHeader = Sign(self, method, url, args, oauth_token_secret)
 	local headers = merge({}, headers)
 	if self.m_supportsAuthHeader then
