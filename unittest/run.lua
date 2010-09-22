@@ -6,7 +6,6 @@ local console = require "lunit-console"
 
 require "echo_lab_madgex_com"
 --require "twitter"
---require "dev_k42b3"
 require "termie"
 
 -- eventos posibles:
