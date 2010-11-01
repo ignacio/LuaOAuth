@@ -24,7 +24,7 @@ external_dependencies = {
 
 }
 build = {
-	type = "builtin",
+	type = "none",
 	modules = {
 		OAuth = "src/OAuth.lua"
 	}
