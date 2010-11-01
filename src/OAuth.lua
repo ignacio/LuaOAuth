@@ -83,7 +83,7 @@ end
 -- The args should also contain an 'oauth_token_secret' item, except for the initial token request.
 -- See: http://dev.twitter.com/pages/auth#signing-requests
 --
-local function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authRealm)
+function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authRealm)
 	assert(m_valid_http_methods[httpMethod], "method '" .. httpMethod .. "' not supported")
 	
 	local consumer_secret = self.m_consumer_secret
