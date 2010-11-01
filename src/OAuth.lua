@@ -1,7 +1,7 @@
 local Http = require "socket.http"
 local Https = require "ssl.https"
-local Base64 = require "base64"
 local Ltn12 = require "ltn12"
+local Mime = require "mime"
 local Url = require "socket.url"
 local Crypto = require "crypto"
 
@@ -138,7 +138,7 @@ local function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, au
 	local hmac_binary = Crypto.hmac.digest("sha1", signature_base_string, signature_key, true)
 	
 	-- Base64 encode it
-	local hmac_b64 = Base64.encode(hmac_binary)
+	local hmac_b64 = Mime.b64(hmac_binary)
 		
 	local oauth_signature = oauth_encode(hmac_b64)
 	

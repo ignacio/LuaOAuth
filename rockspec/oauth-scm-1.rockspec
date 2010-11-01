@@ -17,7 +17,6 @@ dependencies = {
 	"luasocket",
 	"luasec",
 	"luacrypto",
-	"lbase64"
 }
 
 external_dependencies = {
