@@ -83,7 +83,7 @@ end
 -- The args should also contain an 'oauth_token_secret' item, except for the initial token request.
 -- See: http://dev.twitter.com/pages/auth#signing-requests
 --
-local function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authRealm)
+function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authRealm)
 	assert(m_valid_http_methods[httpMethod], "method '" .. httpMethod .. "' not supported")
 	
 	local consumer_secret = self.m_consumer_secret
@@ -282,7 +282,7 @@ function RequestToken(self, arguments, headers)
 	
 	local endpoint = self.m_endpoints.RequestToken
 	
-	local oauth_signature, post_body, authHeader = Sign(self, endpoint.method, endpoint.url, args)
+	local oauth_signature, post_body, authHeader = self:Sign(endpoint.method, endpoint.url, args)
 	
 	local headers = merge({}, headers)
 	if self.m_supportsAuthHeader then
@@ -324,7 +324,7 @@ function BuildAuthorizationUrl(self, arguments)
 	args.oauth_token = (arguments and arguments.oauth_token) or self.m_oauth_token or error("no oauth_token")
 	
 	local endpoint = self.m_endpoints.AuthorizeUser
-	local oauth_signature, post_body, authHeader = Sign(self, endpoint.method, endpoint.url, args)
+	local oauth_signature, post_body, authHeader = self:Sign(endpoint.method, endpoint.url, args)
 	return endpoint.url .. "?" .. post_body, authHeader
 end
 
@@ -349,7 +349,7 @@ function Authorize(self, arguments, headers)
 	
 	local endpoint = self.m_endpoints.AuthorizeUser
 	
-	local oauth_signature, post_body, authHeader = Sign(self, endpoint.method, endpoint.url, args)
+	local oauth_signature, post_body, authHeader = self:Sign(endpoint.method, endpoint.url, args)
 	
 	local headers = merge({}, headers)
 	if self.m_supportsAuthHeader then
@@ -389,7 +389,7 @@ function GetAccessToken(self, arguments, headers)
 	end
 	args.oauth_token_secret = nil	-- this is never sent
 	
-	local oauth_signature, post_body, authHeader = Sign(self, endpoint.method, endpoint.url, args, oauth_token_secret)
+	local oauth_signature, post_body, authHeader = self:Sign(endpoint.method, endpoint.url, args, oauth_token_secret)
 	--print(oauth_signature)
 	--print(post_body)
 	--print(authHeader)
@@ -448,7 +448,7 @@ function PerformRequest(self, method, url, arguments, headers)
 	end
 	args.oauth_token_secret = nil	-- this is never sent
 	
-	local oauth_signature, post_body, authHeader = Sign(self, method, url, args, oauth_token_secret)
+	local oauth_signature, post_body, authHeader = self:Sign(method, url, args, oauth_token_secret)
 	local headers = merge({}, headers)
 	if self.m_supportsAuthHeader then
 		headers["Authorization"] = authHeader
