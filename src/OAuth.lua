@@ -422,11 +422,30 @@ end
 -- (see http://tools.ietf.org/html/rfc5849#section-3)
 -- @param method is the http method (GET, POST, etc)
 -- @param url is the url to request
--- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
 -- @return the http status code (a number), a table with the response headers, the status line and the response itself
 function PerformRequest(self, method, url, arguments, headers)
+	assert(type(method) == "string", "'method' must be a string")
+	method = method:upper()
+	
+	local headers, post_body, arguments = self:BuildRequest(method, url, arguments, headers)
+	local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, url, method, headers, arguments, post_body)
+	return response_code, response_headers, response_status_line, response_body
+end
+
+
+--
+-- After retrieving an access token, this method is used to issue properly authenticated requests.
+-- (see http://tools.ietf.org/html/rfc5849#section-3)
+-- @param method is the http method (GET, POST, etc)
+-- @param url is the url to request
+-- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+--  (when doing a POST) or encoded and sent in the query string (when doing a GET).
+-- @param headers is an optional table with http headers to be sent in the request
+-- @return a table with the headers, a table with the (cleaned up) arguments and the request body.
+function BuildRequest(self, method, url, arguments, headers)
 	assert(type(method) == "string", "'method' must be a string")
 	method = method:upper()
 	
@@ -453,8 +472,20 @@ function PerformRequest(self, method, url, arguments, headers)
 	if self.m_supportsAuthHeader then
 		headers["Authorization"] = authHeader
 	end
-	local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, url, method, headers, arguments, post_body)
-	return response_code, response_headers, response_status_line, response_body
+	
+	-- Remove oauth_related arguments
+	if type(arguments) == "table" then
+		for k,v in pairs(arguments) do
+			if type(k) == "string" and k:match("^oauth_") then
+				arguments[k] = nil
+			end
+		end
+		if not next(arguments) then
+			arguments = nil
+		end
+	end
+	
+	return headers, arguments, post_body
 end
 
 --
