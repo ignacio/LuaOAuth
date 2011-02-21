@@ -10,7 +10,8 @@ Most of the code was taken from [Jeffrey Friedl's blog][1].
 
 ## Usage #
 
-You can take a look at the unit tests. For instance, the file ''unittest/echo_lab_madgex_com.lua'' creates a client that 
+There is some documentation available [on the wiki](https://github.com/ignacio/LuaOAuth/wiki/API-Documentation) and also 
+you can take a look at the unit tests. For instance, the file ''unittest/echo_lab_madgex_com.lua'' creates a client that 
 uses the test service provided by [madgex.com][5].
 
 Basically, you create an OAuth client with your consumer key and secret, providing the OAuth service's endpoints URLs (i.e. 
