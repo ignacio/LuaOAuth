@@ -430,14 +430,15 @@ function PerformRequest(self, method, url, arguments, headers)
 	assert(type(method) == "string", "'method' must be a string")
 	method = method:upper()
 	
-	local headers, post_body, arguments = self:BuildRequest(method, url, arguments, headers)
+	local headers, arguments, post_body = self:BuildRequest(method, url, arguments, headers)
 	local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, url, method, headers, arguments, post_body)
 	return response_code, response_headers, response_status_line, response_body
 end
 
 
 --
--- After retrieving an access token, this method is used to issue properly authenticated requests.
+-- After retrieving an access token, this method is used to build properly authenticated requests, allowing the user 
+-- to send them with the method she seems fit.
 -- (see http://tools.ietf.org/html/rfc5849#section-3)
 -- @param method is the http method (GET, POST, etc)
 -- @param url is the url to request
