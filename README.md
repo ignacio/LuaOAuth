@@ -8,6 +8,10 @@ done with [LuaCrypto][4] instead of [plain Lua][6].
 
 Most of the code was taken from [Jeffrey Friedl's blog][1].
 
+LuaOAuth supports two modes of operation. A "synchronous" mode were you block while you wait for the results or an 
+"asynchronous" mode where you must supply "callbacks" in order to receive the results. LuaOAuth will behave asynchronously 
+when used in conjunction with [LuaNode][8].
+
 ## Usage #
 
 There is some documentation available [on the wiki](https://github.com/ignacio/LuaOAuth/wiki/API-Documentation) and also 
@@ -29,6 +33,18 @@ Now you can request a token and then an access token:
 
 Once you have been authorized, you can perform requests:
     local code, headers, statusLine, body = client:PerformRequest("POST", "http://echo.lab.madgex.com/echo.ashx", {status = "Hello World From Lua (again)!" .. os.time()})
+
+That is called the "synchronous" api. But if you use LuaOAuth with [LuaNode][8] you'll need to use the "asynchronous" api:
+
+    local OAuth = require "OAuth"
+    local client = OAuth.new("key", "secret", {
+    	RequestToken = "http://echo.lab.madgex.com/request-token.ashx", 
+    	AccessToken = "http://echo.lab.madgex.com/access-token.ashx"
+    })
+    client:RequestToken(function(values)
+    	-- I receive the token in the callback I've supplied.
+    end)
+    
 
 ## A more involved example #
 This example will show how to use LuaOAuth with Twitter. It assumes that you have already created a Twitter application. 
@@ -143,3 +159,4 @@ Now, let's try to request my Twitts.
 [5]: http://echo.lab.madgex.com/
 [6]: http://regex.info/blog/lua/sha1
 [7]: http://dev.twitter.com/apps
+[8]: https://github.com/ignacio/luanode

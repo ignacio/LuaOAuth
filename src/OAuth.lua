@@ -1,9 +1,18 @@
-local Http = require "socket.http"
-local Https = require "ssl.https"
 local Base64 = require "base64"
-local Ltn12 = require "ltn12"
-local Url = require "socket.url"
-local Crypto = require "crypto"
+local Crypto
+local core
+local isLuaNode
+
+if process then
+	Crypto = require "luanode.crypto"
+	core = require "OAuth.coreLuaNode"
+	isLuaNode = true
+else
+	Crypto = require "crypto"
+	core = require "OAuth.coreLuaSocket"
+	isLuaNode = false
+end
+
 
 local table, string, os, print = table, string, os, print
 local error, assert = error, assert
@@ -55,7 +64,13 @@ end
 -- Generates a nonce (number used once).
 -- I'm not base64 encoding the resulting nonce because some providers rejects them (i.e. echo.lab.madgex.com)
 local function generate_nonce()
-	return Crypto.hmac.digest("sha1", tostring(math.random()) .. "random" .. tostring(os.time()),"keyyyy")
+	local nonce = tostring(math.random()) .. "random" .. tostring(os.time())
+	
+	if isLuaNode then
+		return Crypto.createHmac("sha1", "keyyyy"):update(nonce):final('hex')
+	else
+		return Crypto.hmac.digest("sha1", nonce, "keyyyy")
+	end
 end
 
 --
@@ -64,16 +79,6 @@ local function oauth_encode(val)
 	return val:gsub('[^-._~a-zA-Z0-9]', function(letter)
 		return string.format("%%%02x", letter:byte()):upper()
 	end)
-end
-
---
--- Encodes the key-value pairs of a table according the application/x-www-form-urlencoded content type.
-local function url_encode_arguments(arguments)
-	local body = {}
-	for k,v in pairs(arguments) do
-		body[#body + 1] = Url.escape(tostring(k)) .. "=" .. Url.escape(tostring(v))
-	end
-	return table.concat(body, "&")
 end
 
 --
@@ -134,8 +139,13 @@ function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authReal
 	local signature_key = oauth_encode(consumer_secret) .. '&' .. oauth_encode(token_secret)
 	--print( ("Signature key: %s"):format(signature_key) )
 	
-	-- Now have our text and key for HMAC-SHA1 signing
-	local hmac_binary = Crypto.hmac.digest("sha1", signature_base_string, signature_key, true)
+	-- Now have our text and key for HMAC-SHA1 signing	
+	local hmac_binary
+	if isLuaNode then
+		hmac_binary = Crypto.createHmac("sha1", signature_key):update(signature_base_string):final("binary")
+	else
+		hmac_binary = Crypto.hmac.digest("sha1", signature_base_string, signature_key, true)
+	end
 	
 	-- Base64 encode it
 	local hmac_b64 = Base64.encode(hmac_binary)
@@ -167,8 +177,9 @@ end
 --   or a string (or something that can be converted to a string). In that case, you must supply the Content-Type.
 -- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider 
 --   does not support the 'Authorization' header.
-local function PerformRequestHelper(self, url, method, headers, arguments, post_body)
-	-- Remove oauth_related arguments
+-- @param callback is only required if running under LuaNode. It is a function to be called when the response is available.
+local function PerformRequestHelper (self, url, method, headers, arguments, post_body, callback)
+		-- Remove oauth_related arguments
 	if type(arguments) == "table" then
 		for k,v in pairs(arguments) do
 			if type(k) == "string" and k:match("^oauth_") then
@@ -180,97 +191,35 @@ local function PerformRequestHelper(self, url, method, headers, arguments, post_
 		end
 	end
 	
-	-- this method screams "refactor me!"
-	local response_body = {}
-	local request_constructor = {
-		url = url,
-		method = method,
-		headers = headers,
-		sink = Ltn12.sink.table(response_body)
-	}
-	
-	if method == "PUT" then
-		if type(arguments) == "table" then
-			error("unsupported table argument for PUT")
-		else
-			local string_data = tostring(arguments)
-			if string_data == "nil" then
-				error("data must be something convertible to a string")
-			end
-			request_constructor.headers["Content-Length"] = tostring(#string_data)
-			request_constructor.source = Ltn12.source.string(string_data)
-		end
-	
-	elseif method == "POST" then
-		if type(arguments) == "table" then
-			request_constructor.headers["Content-Type"] = "application/x-www-form-urlencoded"
-			if not self.m_supportsAuthHeader then
-				-- send all parameters (oauth + custom) in the body
-				request_constructor.headers["Content-Length"] = tostring(#post_body)
-				request_constructor.source = Ltn12.source.string(post_body)
-			else
-				-- encode the custom parameters and send them in the body
-				local source = url_encode_arguments(arguments)
-				request_constructor.headers["Content-Length"] = tostring(#source)
-				request_constructor.source = Ltn12.source.string(source)
-			end
-		elseif arguments then
-			if not self.m_supportsAuthHeader then
-				error("can't send POST body if the server does not support 'Authorization' header")
-			end
-			local string_data = tostring(arguments)
-			if string_data == "nil" then
-				error("data must be something convertible to a string")
-			end
-			request_constructor.headers["Content-Length"] = tostring(#string_data)
-			request_constructor.source = Ltn12.source.string(string_data)
-		else
-			request_constructor.headers["Content-Length"] = "0"
-		end
-		
-	elseif method == "GET" or method == "HEAD" or method == "DELETE" then
-		if self.m_supportsAuthHeader then
-			if arguments then
-				request_constructor.url = url .. "?" .. url_encode_arguments(arguments)
-			end
-		else
-			-- send all parameters (oauth + custom) in the url
-			request_constructor.url = url .. "?" .. post_body
-		end
-	end
-	
-	local ok, response_code, response_headers, response_status_line
-	if url:match("^https://") then
-		ok, response_code, response_headers, response_status_line = Https.request(request_constructor)
-	elseif url:match("^http://") then
-		ok, response_code, response_headers, response_status_line = Http.request(request_constructor)
-	else
-		error( ("unsupported scheme '%s'"):format( tostring(url:match("^([^:]+)")) ) )
-	end
-	
-	if not ok then
-		return nil, response_code, response_headers, response_status_line, response_body
-	end
-	
-	response_body = table.concat(response_body)
-	
-	--[=[
-	for k,v in pairs(response_headers or {}) do
-		print( ("%s: %s"):format(k,v) )
-	end
-	print( ("response: %s"):format(response_body) )
-	--]=]
-	
-	return true, response_code, response_headers, response_status_line, response_body
+	return core.PerformRequestHelper(self, url, method, headers, arguments, post_body, callback)
 end
+
+
 
 -- 
 -- Requests an Unauthorized Request Token (http://tools.ietf.org/html/rfc5849#section-2.1)
 -- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
--- @return a table containing the returned values from the server if succesfull or throws an error otherwise
-function RequestToken(self, arguments, headers)
+-- @param callback is only required if running under LuaNode. It is a function to be called with a table with the 
+--   obtained token or [false, http status code, http response headers, http status line and the response body] in case 
+--   of an error. The callback is mandatory when running under LuaNode.
+-- @return nothing if running under LuaNode (the callback will be called instead). Else it will return a 
+--   table containing the returned values from the server if succesfull or throws an error otherwise.
+function RequestToken(self, arguments, headers, callback)
+
+	if type(arguments) == "function" then
+		callback = arguments
+		arguments, headers = nil, nil
+	elseif type(headers) == "function" then
+		callback = headers
+		headers = nil
+	end
+	
+	if isLuaNode and not callback then
+		error("RequestToken needs a callback")
+	end
+
 	local args = {
 		oauth_consumer_key = self.m_consumer_key,
 		oauth_nonce = generate_nonce(),
@@ -288,22 +237,47 @@ function RequestToken(self, arguments, headers)
 	if self.m_supportsAuthHeader then
 		headers["Authorization"] = authHeader
 	end
+
+	if not callback then
+		local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body)
+		--print(ok, response_code, response_headers, response_status_line, response_body)
+		if not ok or response_code ~= 200 then
+			-- can't do much, the responses are not standard
+			return nil, response_code, response_headers, response_status_line, response_body
+		end
+		local values = {}
+		for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
+			--print( ("key=%s, value=%s"):format(key, value) )
+			values[key] = value
+		end
 	
-	local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body)
-	if not ok or response_code ~= 200 then
-		-- can't do much, the responses are not standard
-		return nil, response_code, response_headers, response_status_line, response_body
+		self.m_oauth_token_secret = values.oauth_token_secret
+		self.m_oauth_token = values.oauth_token
+
+		return values
+	
+	else
+	
+		local oauth_instance = self
+		
+		PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body, 
+			function(ok, response_code, response_headers, response_status_line, response_body)
+				if not ok or response_code ~= 200 then
+					-- can't do much, the responses are not standard
+					callback(nil, response_code, response_headers, response_status_line, response_body)
+				end
+				local values = {}
+				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
+					--print( ("key=%s, value=%s"):format(key, value) )
+					values[key] = value
+				end
+		
+				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
+				oauth_instance.m_oauth_token = values.oauth_token
+
+				callback(values)
+			end)
 	end
-	local values = {}
-	for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
-		--print( ("key=%s, value=%s"):format(key, value) )
-		values[key] = value
-	end
-	
-	self.m_oauth_token_secret = values.oauth_token_secret
-	self.m_oauth_token = values.oauth_token
-	
-	return values
 end
 
 -- 
@@ -363,14 +337,31 @@ end
 --]=]
 
 
---
+---
 -- Exchanges a request token for an Access token (http://tools.ietf.org/html/rfc5849#section-2.3)
 -- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
--- @return a table containing the returned values from the server if succesfull or nil plus the http status code (a number), 
---   a table with the response headers, the status line and the response itself
-function GetAccessToken(self, arguments, headers)
+-- @param callback is only required if running under LuaNode. It is a function to be called with a table with the 
+--   obtained token or [false, http status code, http response headers, http status line and the response body] in case 
+--   of an error. The callback is mandatory when running under LuaNode.
+-- @return nothing if running under LuaNode (the callback will be called instead). Else, a table containing the returned 
+--   values from the server if succesfull or nil plus the http status code (a number), a table with the response 
+--   headers, the status line and the response itself
+function GetAccessToken(self, arguments, headers, callback)
+	
+	if type(arguments) == "function" then
+		callback = arguments
+		arguments, headers = nil, nil
+	elseif type(headers) == "function" then
+		callback = headers
+		headers = nil
+	end
+	
+	if isLuaNode and not callback then
+		error("GetAccessToken needs a callback")
+	end
+	
 	local args = {
 		oauth_consumer_key = self.m_consumer_key,
 		oauth_nonce = generate_nonce(),
@@ -399,44 +390,93 @@ function GetAccessToken(self, arguments, headers)
 		headers["Authorization"] = authHeader
 	end
 	
-	local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body)
-	if not ok or response_code ~= 200 then
-		-- can't do much, the responses are not standard
-		return nil, response_code, response_headers, response_status_line, response_body
-	end
+	if not callback then
 	
-	local values = {}
-	for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
-		--print( ("key=%s, value=%s"):format(key, value) )
-		values[key] = value
-	end
-	self.m_oauth_token_secret = values.oauth_token_secret
-	self.m_oauth_token = values.oauth_token
+		local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body)
+		if not ok or response_code ~= 200 then
+			-- can't do much, the responses are not standard
+			return nil, response_code, response_headers, response_status_line, response_body
+		end
 	
-	return values
+		local values = {}
+		for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
+			--print( ("key=%s, value=%s"):format(key, value) )
+			values[key] = value
+		end
+		self.m_oauth_token_secret = values.oauth_token_secret
+		self.m_oauth_token = values.oauth_token
+	
+		return values
+		
+	else
+	
+		local oauth_instance = self
+		
+		PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body, 
+			function(ok, response_code, response_headers, response_status_line, response_body)
+				
+				if not ok or response_code ~= 200 then
+					-- can't do much, the responses are not standard
+					callback(nil, response_code, response_headers, response_status_line, response_body)
+				end
+				local values = {}
+				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
+					--print( ("key=%s, value=%s"):format(key, value) )
+					values[key] = value
+				end
+		
+				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
+				oauth_instance.m_oauth_token = values.oauth_token
+
+				callback(values)
+			end)
+	end
 end
 
 
---
+---
 -- After retrieving an access token, this method is used to issue properly authenticated requests.
 -- (see http://tools.ietf.org/html/rfc5849#section-3)
 -- @param method is the http method (GET, POST, etc)
 -- @param url is the url to request
 -- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
---  (when doing a POST) or encoded and sent in the query string (when doing a GET).
+--   (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
--- @return the http status code (a number), a table with the response headers, the status line and the response itself
-function PerformRequest(self, method, url, arguments, headers)
+-- @param callback is only required if running under LuaNode. It is a function to be called with the result of the request.
+-- @return nothing if running under Luanode (the callback will be called instead). Else, the http status code 
+--   (a number), a table with the response headers, the status line and the response itself.
+function PerformRequest(self, method, url, arguments, headers, callback)
 	assert(type(method) == "string", "'method' must be a string")
 	method = method:upper()
 	
+	if type(arguments) == "function" then
+		callback = arguments
+		arguments, headers = nil, nil
+	elseif type(headers) == "function" then
+		callback = headers
+		headers = nil
+	end
+	
+	if isLuaNode and not callback then
+		error("PerformRequest needs a callback")
+	end
+	
 	local headers, arguments, post_body = self:BuildRequest(method, url, arguments, headers)
-	local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, url, method, headers, arguments, post_body)
-	return response_code, response_headers, response_status_line, response_body
+	
+	if not callback then
+		local ok, response_code, response_headers, response_status_line, response_body = PerformRequestHelper(self, url, method, headers, arguments, post_body)
+		return response_code, response_headers, response_status_line, response_body
+	
+	else
+		PerformRequestHelper(self, url, method, headers, arguments, post_body, 
+			function(ok, response_code, response_headers, response_status_line, response_body)
+				callback(response_code, response_headers, response_status_line, response_body)
+			end)
+	end
 end
 
 
---
+---
 -- After retrieving an access token, this method is used to build properly authenticated requests, allowing the user 
 -- to send them with the method she seems fit.
 -- (see http://tools.ietf.org/html/rfc5849#section-3)
