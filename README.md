@@ -140,6 +140,7 @@ print("response_body", response_body)
 ```
 
 Now, let's try to request my Twitts.
+
 ``` lua
 local oauth_token = "<the value from last step>"
 local oauth_token_secret = "<the value from last step>"
