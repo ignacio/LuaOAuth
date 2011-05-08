@@ -30,13 +30,17 @@ local client = OAuth.new("key", "secret", {
 ```
 
 Now you can request a token and then an access token:
+
 ``` lua
 local values = client:RequestToken()
 values = client:GetAccessToken()
 ```
 
 Once you have been authorized, you can perform requests:
+
+``` lua
     local code, headers, statusLine, body = client:PerformRequest("POST", "http://echo.lab.madgex.com/echo.ashx", {status = "Hello World From Lua (again)!" .. os.time()})
+```
 
 That is called the "synchronous" api. But if you use LuaOAuth with [LuaNode][8] you'll need to use the "asynchronous" api:
 
