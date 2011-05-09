@@ -111,6 +111,7 @@ end
 ```
 
 If everything went well, something like this will be printed:
+
     screen_name     johncleese (this will be your username)
     oauth_token     dasklhdnmpunexoibrunkljdsflkj191919409
     oauth_token_secret      AIUSUMAOoq983092874bibiuwewqlknjSUXt
