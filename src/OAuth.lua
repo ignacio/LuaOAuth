@@ -2,14 +2,17 @@ local Base64 = require "base64"
 local Crypto
 local core
 local isLuaNode
+local Url
 
 if process then
 	Crypto = require "luanode.crypto"
 	core = require "OAuth.coreLuaNode"
+	Url = require "luanode.url"
 	isLuaNode = true
 else
 	Crypto = require "crypto"
 	core = require "OAuth.coreLuaSocket"
+	Url = require "socket.url"
 	isLuaNode = false
 end
 
@@ -248,7 +251,8 @@ function RequestToken(self, arguments, headers, callback)
 		local values = {}
 		for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 			--print( ("key=%s, value=%s"):format(key, value) )
-			values[key] = value
+			-- The response parameters are url-encodeded per RFC 5849 so we need to decode them
+			values[key] = Url.unescape(value)
 		end
 	
 		self.m_oauth_token_secret = values.oauth_token_secret
