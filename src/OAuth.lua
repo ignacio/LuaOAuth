@@ -273,7 +273,7 @@ function RequestToken(self, arguments, headers, callback)
 				local values = {}
 				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 					--print( ("key=%s, value=%s"):format(key, value) )
-					values[key] = value
+					values[key] = Url.unescape(value)
 				end
 		
 				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
