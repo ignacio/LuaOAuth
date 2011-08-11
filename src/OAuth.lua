@@ -102,7 +102,7 @@ function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authReal
 	for key, val in pairs(arguments) do
 		table.insert(keys_and_values, {
 						key = oauth_encode(key),
-						val = oauth_encode(val)
+						val = oauth_encode(tostring(val))
 					})
 	end
 	
