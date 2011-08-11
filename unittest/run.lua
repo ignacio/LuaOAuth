@@ -8,6 +8,7 @@ local console = require "lunit-console"
 require "echo_lab_madgex_com"
 --require "twitter"
 require "termie"
+require "google"
 
 -- eventos posibles:
 -- begin, done, fail, err, run, pass
