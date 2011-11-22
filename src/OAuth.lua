@@ -269,6 +269,7 @@ function RequestToken(self, arguments, headers, callback)
 				if not ok or response_code ~= 200 then
 					-- can't do much, the responses are not standard
 					callback(nil, response_code, response_headers, response_status_line, response_body)
+					return
 				end
 				local values = {}
 				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
@@ -422,6 +423,7 @@ function GetAccessToken(self, arguments, headers, callback)
 				if not ok or response_code ~= 200 then
 					-- can't do much, the responses are not standard
 					callback(nil, response_code, response_headers, response_status_line, response_body)
+					return
 				end
 				local values = {}
 				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
