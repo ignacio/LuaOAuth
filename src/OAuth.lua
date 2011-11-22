@@ -2,17 +2,17 @@ local Base64 = require "base64"
 local Crypto
 local core
 local isLuaNode
-local Url
+local unescape
 
 if process then
 	Crypto = require "luanode.crypto"
 	core = require "OAuth.coreLuaNode"
-	Url = require "luanode.url"
+	unescape = require "luanode.querystring".url_decode
 	isLuaNode = true
 else
 	Crypto = require "crypto"
 	core = require "OAuth.coreLuaSocket"
-	Url = require "socket.url"
+	unescape = require "socket.url".unescape
 	isLuaNode = false
 end
 
@@ -252,7 +252,7 @@ function RequestToken(self, arguments, headers, callback)
 		for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 			--print( ("key=%s, value=%s"):format(key, value) )
 			-- The response parameters are url-encodeded per RFC 5849 so we need to decode them
-			values[key] = Url.unescape(value)
+			values[key] = unescape(value)
 		end
 	
 		self.m_oauth_token_secret = values.oauth_token_secret
@@ -273,7 +273,7 @@ function RequestToken(self, arguments, headers, callback)
 				local values = {}
 				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 					--print( ("key=%s, value=%s"):format(key, value) )
-					values[key] = Url.unescape(value)
+					values[key] = unescape(value)
 				end
 		
 				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
@@ -405,7 +405,7 @@ function GetAccessToken(self, arguments, headers, callback)
 		local values = {}
 		for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 			--print( ("key=%s, value=%s"):format(key, value) )
-			values[key] = Url.unescape(value)
+			values[key] = unescape(value)
 		end
 		self.m_oauth_token_secret = values.oauth_token_secret
 		self.m_oauth_token = values.oauth_token
@@ -426,7 +426,7 @@ function GetAccessToken(self, arguments, headers, callback)
 				local values = {}
 				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 					--print( ("key=%s, value=%s"):format(key, value) )
-					values[key] = Url.unescape(value)
+					values[key] = unescape(value)
 				end
 		
 				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
