@@ -21,6 +21,9 @@ module((...))
 -- @param callback is a function to be called with the results of the request when they're available. The callback 
 --   receives the following arguments: a status (true or false), http status code, http response headers, 
 --   http status line and the response body
+--   In case of a connection error (host unreacheable, etc), the callback will be called with (false, error message, 
+--   error code)
+--
 function PerformRequestHelper (self, url, method, headers, arguments, post_body, callback)
 	-- arguments have already been sanitized
 	
@@ -96,6 +99,10 @@ function PerformRequestHelper (self, url, method, headers, arguments, post_body,
 	end
 
 	local client = Http.createClient(parsedUrl.port, parsedUrl.host, secure)
+	
+	client:on("error", function(self, err_msg, err_code)
+		callback(false, err_msg, err_code)
+	end)
 	
 	-- this sucks!
 	request_constructor.headers["Host"] = parsedUrl.host
