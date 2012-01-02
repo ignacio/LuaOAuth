@@ -26,7 +26,8 @@ function PerformRequestHelper (self, url, method, headers, arguments, post_body)
 		url = url,
 		method = method,
 		headers = headers,
-		sink = Ltn12.sink.table(response_body)
+		sink = Ltn12.sink.table(response_body),
+		redirect = false
 	}
 	
 	if method == "PUT" then
