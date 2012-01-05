@@ -292,19 +292,28 @@ end
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @return the fully constructed URL, with both OAuth and custom parameters encoded, and the value of the 'Authorization' header
 function BuildAuthorizationUrl(self, arguments)
-	local args = {
-		oauth_consumer_key = self.m_consumer_key,
-		oauth_nonce = generate_nonce(),
-		oauth_signature_method = self.m_signature_method,
-		oauth_timestamp = generate_timestamp(),
-		oauth_version = "1.0",
-	}
+	local args = { }
 	args = merge(args, arguments)
 	args.oauth_token = (arguments and arguments.oauth_token) or self.m_oauth_token or error("no oauth_token")
-	
+
+	-- oauth-encode each key and value
+	local keys_and_values = { }
+	for key, val in pairs(args) do
+		table.insert(keys_and_values, {
+						key = oauth_encode(key),
+						val = oauth_encode(tostring(val))
+					})
+	end
+
+	-- Now combine key and value into key=value
+	local key_value_pairs = { }
+	for _, rec in pairs(keys_and_values) do
+		table.insert(key_value_pairs, rec.key .. "=" .. rec.val)
+	end
+	local query_string = table.concat(key_value_pairs, "&")
+
 	local endpoint = self.m_endpoints.AuthorizeUser
-	local oauth_signature, post_body, authHeader = self:Sign(endpoint.method, endpoint.url, args)
-	return endpoint.url .. "?" .. post_body, authHeader
+	return endpoint.url .. "?" .. query_string
 end
 
 --[=[ This seems to be unnecesary
