@@ -288,9 +288,8 @@ end
 -- 
 -- Requests Authorization from the User (http://tools.ietf.org/html/rfc5849#section-2.2)
 -- Builds the URL used to issue a request to the Service Provider's User Authorization URL
--- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
---  (when doing a POST) or encoded and sent in the query string (when doing a GET).
--- @return the fully constructed URL, with both OAuth and custom parameters encoded, and the value of the 'Authorization' header
+-- @param arguments is an optional table whose keys and values will be encoded and sent in the query string.
+-- @return the fully constructed URL, with oauth_token and custom parameters encoded.
 function BuildAuthorizationUrl(self, arguments)
 	local args = { }
 	args = merge(args, arguments)
