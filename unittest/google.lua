@@ -17,6 +17,8 @@ function test()
 	print(request_token.oauth_token)
 
 	local auth_url = client:BuildAuthorizationUrl()
+	print("Test authorization at the following URL")
+	print(auth_url)
 	print(string.match(auth_url, "oauth_token=([^&]+)&"))
 end
 
