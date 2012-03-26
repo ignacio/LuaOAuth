@@ -10,20 +10,16 @@ function test()
 		AccessToken = "http://echo.lab.madgex.com/access-token.ashx"
 	})
 	print("Requesting token")
-	client:RequestToken(function(values, status, headers, response_line, response_body)
-		if not values then
-			print(status)
-			for k,v in pairs(headers) do print(k,v) end
-			print(response_line)
-			print(response_body)
-		end
+	client:RequestToken(function(err, values)
+		assert_nil(err)
+		
 		assert_table(values)
 		assert_equal("requestkey", values.oauth_token)
 		assert_equal("requestsecret", values.oauth_token_secret)
 		
 		print("Retrieving access token")
-		client:GetAccessToken(function(values)
-			
+		client:GetAccessToken(function(err, values)
+
 			assert_table(values)
 			assert_equal("accesskey", values.oauth_token)
 			assert_equal("accesssecret", values.oauth_token_secret)
@@ -37,8 +33,13 @@ function test()
 			client:SetTokenSecret("accesssecret")
 			client:PerformRequest("GET", "http://echo.lab.madgex.com/echo.ashx", 
 									{foo = "bar"},
-									function(response_code, response_headers, response_status_line, response_body)
-			
+									function(err, response_code, response_headers, response_status_line, response_body)
+				if err then
+					print("Error making request")
+					print(err.code)
+					print(err.message)
+					return
+				end
 				if response_code ~= 200 then
 					print("Error requesting token:", response_code)
 					for k,v in pairs(response_headers) do print(k,v) end

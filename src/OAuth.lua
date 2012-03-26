@@ -199,7 +199,7 @@ end
 
 
 
--- 
+--- 
 -- Requests an Unauthorized Request Token (http://tools.ietf.org/html/rfc5849#section-2.1)
 -- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
@@ -209,6 +209,7 @@ end
 --   of an error. The callback is mandatory when running under LuaNode.
 -- @return nothing if running under LuaNode (the callback will be called instead). Else it will return a 
 --   table containing the returned values from the server if succesfull or throws an error otherwise.
+--
 function RequestToken(self, arguments, headers, callback)
 
 	if type(arguments) == "function" then
@@ -265,10 +266,14 @@ function RequestToken(self, arguments, headers, callback)
 		local oauth_instance = self
 		
 		PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body, 
-			function(ok, response_code, response_headers, response_status_line, response_body)
-				if not ok or response_code ~= 200 then
+			function(err, response_code, response_headers, response_status_line, response_body)
+				if err then
+					callback(err)
+					return
+				end
+				if response_code ~= 200 then
 					-- can't do much, the responses are not standard
-					callback(nil, response_code, response_headers, response_status_line, response_body)
+					callback({ status = response_code, headers = response_headers, status_line = response_status_line, body = response_body})
 					return
 				end
 				local values = {}
@@ -280,7 +285,7 @@ function RequestToken(self, arguments, headers, callback)
 				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
 				oauth_instance.m_oauth_token = values.oauth_token
 
-				callback(values)
+				callback(nil, values)
 			end)
 	end
 end
@@ -426,11 +431,16 @@ function GetAccessToken(self, arguments, headers, callback)
 		local oauth_instance = self
 		
 		PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body, 
-			function(ok, response_code, response_headers, response_status_line, response_body)
+			function(err, response_code, response_headers, response_status_line, response_body)
 				
-				if not ok or response_code ~= 200 then
+				if err then
+					callback(err)
+					return
+				end
+				
+				if response_code ~= 200 then
 					-- can't do much, the responses are not standard
-					callback(nil, response_code, response_headers, response_status_line, response_body)
+					callback({ status = response_code, headers = response_headers, status_line = response_status_line, body = response_body})
 					return
 				end
 				local values = {}
@@ -442,7 +452,7 @@ function GetAccessToken(self, arguments, headers, callback)
 				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
 				oauth_instance.m_oauth_token = values.oauth_token
 
-				callback(values)
+				callback(nil, values)
 			end)
 	end
 end
@@ -456,9 +466,10 @@ end
 -- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --   (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
--- @param callback is only required if running under LuaNode. It is a function to be called with the result of the request.
+-- @param callback is only required if running under LuaNode. It is a function to be called with an (optional) error object and the result of the request.
 -- @return nothing if running under Luanode (the callback will be called instead). Else, the http status code 
 --   (a number), a table with the response headers, the status line and the response itself.
+--
 function PerformRequest(self, method, url, arguments, headers, callback)
 	assert(type(method) == "string", "'method' must be a string")
 	method = method:upper()
@@ -482,10 +493,7 @@ function PerformRequest(self, method, url, arguments, headers, callback)
 		return response_code, response_headers, response_status_line, response_body
 	
 	else
-		PerformRequestHelper(self, url, method, headers, arguments, post_body, 
-			function(ok, response_code, response_headers, response_status_line, response_body)
-				callback(response_code, response_headers, response_status_line, response_body)
-			end)
+		PerformRequestHelper(self, url, method, headers, arguments, post_body, callback)
 	end
 end
 

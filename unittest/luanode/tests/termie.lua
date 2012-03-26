@@ -15,37 +15,18 @@ function test()
 		UseAuthHeaders = false
 	})
 	print("Requesting token")
-	client:RequestToken(function(values, status, headers, response_line, response_body)
-		if not values then
-			print("Error requesting token:", status)
-			for k,v in pairs(headers) do print(k,v) end
-			print(response_line)
-			print(response_body)
-		end
+	client:RequestToken(function(err, values)
+		assert_nil(err)
+
 		assert_table(values)
-		if not values.oauth_token then
-			print("Error requesting token:", status)
-			for k,v in pairs(values) do print(k,v) end
-			os.exit()
-			error("No oauth_token")
-		end
 		assert_equal("requestkey", values.oauth_token)
 		assert_equal("requestsecret", values.oauth_token_secret)
 		
 		print("Retrieving access token")
-		client:GetAccessToken(function(values, status, headers, response_line, response_body)
-			if not values then
-				print("Error requesting token:", status)
-				for k,v in pairs(headers) do print(k,v) end
-				print(response_line)
-				print(response_body)
-			end
+		client:GetAccessToken(function(err, values)
+			assert_nil(err)
+
 			assert_table(values)
-			if not values.oauth_token then
-				print("Error requesting token:", status)
-				for k,v in pairs(values) do print(k,v) end
-				error("No oauth_token")
-			end
 			assert_equal("accesskey", values.oauth_token)
 			assert_equal("accesssecret", values.oauth_token_secret)
 		
@@ -60,7 +41,9 @@ function test()
 			})
 			
 			client:PerformRequest("GET", "http://term.ie/oauth/example/echo_api.php", { foo="bar"}, 
-				function(response_code, response_headers, response_status_line, response_body)
+				function(err, response_code, response_headers, response_status_line, response_body)
+					assert_nil(err)
+					
 					if response_code ~= 200 then
 						print("Error requesting token:", response_code)
 						for k,v in pairs(response_headers) do print(k,v) end

@@ -9,7 +9,7 @@ local table = table
 
 module((...))
 
--- 
+--- 
 -- Performs the actual http request, using LuaSocket or LuaSec (when using an https scheme)
 -- @param url is the url to request
 -- @param method is the http method (GET, POST, etc)
@@ -19,10 +19,12 @@ module((...))
 -- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider 
 --   does not support the 'Authorization' header.
 -- @param callback is a function to be called with the results of the request when they're available. The callback 
---   receives the following arguments: a status (true or false), http status code, http response headers, 
+--   receives the following arguments: an (optional) error object, http status code, http response headers, 
 --   http status line and the response body
---   In case of a connection error (host unreacheable, etc), the callback will be called with (false, error message, 
---   error code)
+--   In case of a connection error (host unreacheable, etc), the callback will be called with 
+--       { message = <error message>, 
+--         code = <error code>
+--       }
 --
 function PerformRequestHelper (self, url, method, headers, arguments, post_body, callback)
 	-- arguments have already been sanitized
@@ -101,7 +103,7 @@ function PerformRequestHelper (self, url, method, headers, arguments, post_body,
 	local client = Http.createClient(parsedUrl.port, parsedUrl.host, secure)
 	
 	client:on("error", function(self, err_msg, err_code)
-		callback(false, err_msg, err_code)
+		callback({ code = err_code, message = err_msg })
 	end)
 	
 	-- this sucks!
@@ -118,7 +120,7 @@ function PerformRequestHelper (self, url, method, headers, arguments, post_body,
 		end)
 		
 		response:on("end", function(self)
-			callback(true, response.statusCode, response.headers, tostring(response.statusCode), table.concat(request.__buffer))
+			callback(nil, response.statusCode, response.headers, tostring(response.statusCode), table.concat(request.__buffer))
 		end)
 	end)
 	
