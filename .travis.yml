@@ -4,13 +4,11 @@ env:
   - LUA=""
 
 install:
-  - sudo apt-get install libssl
-  - sudo apt-get install libssl-dev
   - sudo apt-get install luarocks
   - sudo luarocks install lunit
   - sudo luarocks install luasocket
   - sudo luarocks install luacrypto
-  - sudo luarocks install luasec
+  - sudo luarocks install luasec OPENSSL_LIBDIR=/usr/lib/x86_64-linux-gnu
   - sudo luarocks install lbase64
 
 script: 
