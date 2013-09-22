@@ -4,6 +4,7 @@ env:
   - LUA=""
 
 install:
+  - sudo apt-get install libssl
   - sudo apt-get install libssl-dev
   - sudo apt-get install luarocks
   - sudo luarocks install lunit
