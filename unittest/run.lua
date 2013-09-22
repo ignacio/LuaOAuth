@@ -1,5 +1,3 @@
-package.path = [[C:\LuaRocks\1.0\lua\?.lua;C:\LuaRocks\1.0\lua\?\init.lua;]] .. package.path
-require "luarocks.require"
 require "lunit"
 
 package.path = "../src/?.lua;../src/?/init.lua;".. package.path

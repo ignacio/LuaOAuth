@@ -2,7 +2,7 @@ module(..., lunit.testcase, package.seeall)
 
 -- see: http://echo.lab.madgex.com/
 function test()
-	print("echo.lab.madgex.com")
+	print("\nTest: echo.lab.madgex.com\n")
 	local client = OAuth.new("key", "secret", {
 		RequestToken = "http://echo.lab.madgex.com/request-token.ashx", 
 		AccessToken = "http://echo.lab.madgex.com/access-token.ashx"

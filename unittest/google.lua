@@ -1,5 +1,3 @@
-require "luarocks.require"
-
 local OAuth = require "OAuth"
 
 module(..., lunit.testcase, package.seeall)
@@ -21,4 +19,3 @@ function test()
 	print(auth_url)
 	print(string.match(auth_url, "oauth_token=([^&]+)&"))
 end
-

@@ -1,4 +1,3 @@
-require "luarocks.require"
 local OAuth = require "OAuth"
 
 module(..., lunit.testcase, package.seeall)
@@ -8,7 +7,7 @@ local consumer_key = "key"
 local consumer_secret = "secret"
 
 function test()
-	print("term.ie")
+	print("\nTest: term.ie\n")
 	local client = OAuth.new(consumer_key, consumer_secret, {
 		RequestToken = {"http://term.ie/oauth/example/request_token.php", method = "GET"},
 		AccessToken = {"http://term.ie/oauth/example/access_token.php", method = "GET"}
@@ -69,5 +68,3 @@ function test()
 	print(response_body)
 	assert_equal("foo=bar", response_body)
 end
-
-
