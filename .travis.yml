@@ -1,0 +1,16 @@
+language: erlang
+
+env:
+  - LUA=""
+
+install:
+  - sudo apt-get install luarocks
+  - sudo luarocks install lunit
+  - sudo luarocks install luasocket
+  - sudo luarocks install luacrypto
+  - sudo luarocks install luasec
+  - sudo luarocks install lbase64
+
+script: 
+  - cd unittest
+  - lua5.1 run.lua
