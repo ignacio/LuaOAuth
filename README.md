@@ -1,5 +1,7 @@
 # Lua OAuth #
 
+[![Build Status](https://travis-ci.org/ignacio/LuaOAuth.png?branch=master)](https://travis-ci.org/ignacio/LuaOAuth)
+
 A Lua client library for OAuth 1.0 enabled servers.
 
 This is an adaptation of Jeffrey Friedl's [Twitter OAuth Authentication Routines in Lua, for Lightroom Plugins][1], 
