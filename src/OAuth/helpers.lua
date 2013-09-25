@@ -1,4 +1,7 @@
-local pairs, table, tostring = pairs, table, tostring
+local pairs, table, tostring, select = pairs, table, tostring, select
+local type, assert = type, assert
+local string = require "string"
+local math = require "math"
 local Url, Qs
 local isLuaNode
 
@@ -21,3 +24,96 @@ url_encode_arguments = (isLuaNode and Qs.url_encode_arguments) or function(argum
 	end
 	return table.concat(body, "&")
 end
+
+
+---
+-- Multipart form-data helper.
+--
+-- Taken from https://github.com/catwell/lua-multipart-post
+--
+do	-- Create a scope to avoid these local helpers to escape
+
+local function fmt(p, ...)
+	if select('#',...) == 0 then
+		return p
+	else
+		return string.format(p, ...)
+	end
+end
+
+local function tprintf(t, p, ...)
+	t[#t + 1] = fmt(p, ...)
+end
+
+local function append_data(r, k, data, extra)
+	tprintf(r, "content-disposition: form-data; name=\"%s\"", k)
+	if extra.filename then
+		tprintf(r, "; filename=\"%s\"", extra.filename)
+	end
+	if extra.content_type then
+		tprintf(r, "\r\ncontent-type: %s", extra.content_type)
+	end
+	if extra.content_transfer_encoding then
+		tprintf(r, "\r\ncontent-transfer-encoding: %s", extra.content_transfer_encoding)
+	end
+	tprintf(r, "\r\n\r\n")
+	tprintf(r, data)
+	tprintf(r, "\r\n")
+end
+
+local function gen_boundary()
+	local t = {"BOUNDARY-"}
+	for i = 2, 17 do
+		t[i] = string.char(math.random(65, 90))
+	end
+	t[18] = "-BOUNDARY"
+	return table.concat(t)
+end
+
+local function encode(t, boundary)
+	local r = {}
+	local _t
+	
+	-- generate a boundary if none was supplied
+	boundary = boundary or gen_boundary()
+	
+	for k,v in pairs(t) do
+		tprintf(r,"--%s\r\n",boundary)
+		_t = type(v)
+		if _t == "string" then
+			append_data(r, k, v, {})
+		elseif _t == "table" then
+			assert(v.data, "invalid input")
+			local extra = {
+				filename = v.filename or v.name,
+				content_type = v.content_type or v.mimetype or "application/octet-stream",
+				content_transfer_encoding = v.content_transfer_encoding or "binary",
+			}
+			append_data(r, k, v.data, extra)
+		else
+			error(string.format("unexpected type %s", _t))
+		end
+	end
+	tprintf(r, "--%s--\r\n", boundary)
+	return table.concat(r)
+end
+
+
+multipart = {
+	---
+	-- t is a table with the data to be encoded as multipart/form-data
+	-- TODO: improve docs
+	Request = function(t)
+		local boundary = gen_boundary()
+		local body = encode(t, boundary)
+		return {
+			body = body,
+			headers = {
+				["Content-Length"] = #body,
+				["Content-Type"] = ("multipart/form-data; boundary=%s"):format(boundary),
+			},
+		}
+	end
+}
+
+end	-- end of multipart scope

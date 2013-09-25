@@ -465,6 +465,8 @@ end
 -- @param url is the url to request
 -- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --   (when doing a POST) or encoded and sent in the query string (when doing a GET).
+--   It can also be a string with the body to be sent in the request (usually a POST). In that case, you need to supply
+--   a valid Content-Type header.
 -- @param headers is an optional table with http headers to be sent in the request
 -- @param callback is only required if running under LuaNode. It is a function to be called with an (optional) error object and the result of the request.
 -- @return nothing if running under Luanode (the callback will be called instead). Else, the http status code 
@@ -506,6 +508,8 @@ end
 -- @param url is the url to request
 -- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
+--   It can also be a string with the body to be sent in the request (usually a POST). In that case, you need to supply
+--   a valid Content-Type header.
 -- @param headers is an optional table with http headers to be sent in the request
 -- @return a table with the headers, a table with the (cleaned up) arguments and the request body.
 function BuildRequest(self, method, url, arguments, headers)

@@ -8,7 +8,7 @@ This is an adaptation of Jeffrey Friedl's [Twitter OAuth Authentication Routines
 with Lightroom's code replaced by other libraries (i.e. [LuaSec][2], [LuaSocket][3], etc) and with HMAC-SHA1 calculations 
 done with [LuaCrypto][4] instead of [plain Lua][6].
 
-Most of the code was taken from [Jeffrey Friedl's blog][1].
+Most of the code was taken from [Jeffrey Friedl's blog][1]. Multipart encoding was adapted from @catwell's [lua-multipart-post][9].
 
 LuaOAuth supports two modes of operation. A "synchronous" mode were you block while you wait for the results or an 
 "asynchronous" mode where you must supply "callbacks" in order to receive the results. LuaOAuth will behave asynchronously 
@@ -76,9 +76,9 @@ Copy the following in a script and run it from the console. Follow the instructi
 ``` lua
 local OAuth = require "OAuth"
 local client = OAuth.new("consumer_key", "consumer_secret", {
-	RequestToken = "http://api.twitter.com/oauth/request_token", 
-	AuthorizeUser = {"http://api.twitter.com/oauth/authorize", method = "GET"},
-	AccessToken = "http://api.twitter.com/oauth/access_token"
+	RequestToken = "https://api.twitter.com/oauth/request_token", 
+	AuthorizeUser = {"https://api.twitter.com/oauth/authorize", method = "GET"},
+	AccessToken = "https://api.twitter.com/oauth/access_token"
 }) 
 local callback_url = "oob"
 local values = client:RequestToken({ oauth_callback = callback_url })
@@ -97,9 +97,9 @@ oauth_verifier = tostring(oauth_verifier)		-- must be a string
 
 -- now we'll use the tokens we got in the RequestToken call, plus our PIN
 local client = OAuth.new("consumer_key", "consumer_secret", {
-	RequestToken = "http://api.twitter.com/oauth/request_token", 
-	AuthorizeUser = {"http://api.twitter.com/oauth/authorize", method = "GET"},
-	AccessToken = "http://api.twitter.com/oauth/access_token"
+	RequestToken = "https://api.twitter.com/oauth/request_token", 
+	AuthorizeUser = {"https://api.twitter.com/oauth/authorize", method = "GET"},
+	AccessToken = "https://api.twitter.com/oauth/access_token"
 }, {
 	OAuthToken = oauth_token,
 	OAuthVerifier = oauth_verifier
@@ -129,9 +129,9 @@ local oauth_token = "<the value from last step>"
 local oauth_token_secret = "<the value from last step>"
 
 local client = OAuth.new("consumer_key", "consumer_secret", {
-	RequestToken = "http://api.twitter.com/oauth/request_token", 
-	AuthorizeUser = {"http://api.twitter.com/oauth/authorize", method = "GET"},
-	AccessToken = "http://api.twitter.com/oauth/access_token"
+	RequestToken = "https://api.twitter.com/oauth/request_token", 
+	AuthorizeUser = {"https://api.twitter.com/oauth/authorize", method = "GET"},
+	AccessToken = "https://api.twitter.com/oauth/access_token"
 }, {
 	OAuthToken = oauth_token,
 	OAuthTokenSecret = oauth_token_secret
@@ -139,23 +139,23 @@ local client = OAuth.new("consumer_key", "consumer_secret", {
 
 -- the mandatory "Hello World" example...
 local response_code, response_headers, response_status_line, response_body = 
-	client:PerformRequest("POST", "http://api.twitter.com/1/statuses/update.json", {status = "Hello World From Lua!" .. os.time()})
+	client:PerformRequest("POST", "https://api.twitter.com/1.1/statuses/update.json", {status = "Hello World From Lua!" .. os.time()})
 print("response_code", response_code)
 print("response_status_line", response_status_line)
 for k,v in pairs(response_headers) do print(k,v) end
 print("response_body", response_body)
 ```
 
-Now, let's try to request my Twitts.
+Now, let's try to request my Tweets.
 
 ``` lua
 local oauth_token = "<the value from last step>"
 local oauth_token_secret = "<the value from last step>"
 
 local client = OAuth.new("consumer_key", "consumer_secret", {
-	RequestToken = "http://api.twitter.com/oauth/request_token", 
-	AuthorizeUser = {"http://api.twitter.com/oauth/authorize", method = "GET"},
-	AccessToken = "http://api.twitter.com/oauth/access_token"
+	RequestToken = "https://api.twitter.com/oauth/request_token", 
+	AuthorizeUser = {"https://api.twitter.com/oauth/authorize", method = "GET"},
+	AccessToken = "https://api.twitter.com/oauth/access_token"
 }, {
 	OAuthToken = oauth_token,
 	OAuthTokenSecret = oauth_token_secret
@@ -163,7 +163,42 @@ local client = OAuth.new("consumer_key", "consumer_secret", {
 
 -- the mandatory "Hello World" example...
 local response_code, response_headers, response_status_line, response_body = 
-client:PerformRequest("GET", "http://api.twitter.com/1/statuses/user_timeline.json", {screen_name = "iburgueno"})
+client:PerformRequest("GET", "https://api.twitter.com/1.1/statuses/user_timeline.json", {screen_name = "iburgueno"})
+print("response_code", response_code)
+print("response_status_line", response_status_line)
+for k,v in pairs(response_headers) do print(k,v) end
+print("response_body", response_body)
+```
+
+And now, let's post an image:
+
+``` lua
+local oauth_token = "<the value from last step>"
+local oauth_token_secret = "<the value from last step>"
+
+local client = OAuth.new("consumer_key", "consumer_secret", {
+	RequestToken = "https://api.twitter.com/oauth/request_token", 
+	AuthorizeUser = {"https://api.twitter.com/oauth/authorize", method = "GET"},
+	AccessToken = "https://api.twitter.com/oauth/access_token"
+}, {
+	OAuthToken = oauth_token,
+	OAuthTokenSecret = oauth_token_secret
+})
+
+local helpers = require "OAuth.helpers"
+
+local req = helpers.multipart.Request{
+	status = "Hello World From Lua!",
+	["media[]"] = {
+		filename = "@picture.jpg",
+		data = picture_data -- some picture file you have read
+	}
+}
+local response_code, response_headers, response_status_line, response_body = 
+	client:PerformRequest("POST", 
+							"https://api.twitter.com/1.1/statuses/update_with_media.json", 
+							req.body, req.headers
+						 )
 print("response_code", response_code)
 print("response_status_line", response_status_line)
 for k,v in pairs(response_headers) do print(k,v) end
@@ -179,3 +214,4 @@ print("response_body", response_body)
 [6]: http://regex.info/blog/lua/sha1
 [7]: http://dev.twitter.com/apps
 [8]: https://github.com/ignacio/luanode
+[9]: https://github.com/catwell/lua-multipart-post

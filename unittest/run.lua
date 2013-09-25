@@ -2,9 +2,7 @@ require "lunit"
 
 package.path = "../src/?.lua;../src/?/init.lua;".. package.path
 
-local OAuth = require "OAuth"
 local console = require "lunit-console"
-
 require "echo_lab_madgex_com"
 --require "twitter"
 require "termie"
