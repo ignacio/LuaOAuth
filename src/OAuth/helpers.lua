@@ -1,5 +1,5 @@
 local pairs, table, tostring, select = pairs, table, tostring, select
-local type, assert = type, assert
+local type, assert, error = type, assert, error
 local string = require "string"
 local math = require "math"
 local Url, Qs
@@ -91,7 +91,7 @@ local function encode(t, boundary)
 			}
 			append_data(r, k, v.data, extra)
 		else
-			error(string.format("unexpected type %s", _t))
+			append_data(r, k, tostring(v), {})
 		end
 	end
 	tprintf(r, "--%s--\r\n", boundary)
