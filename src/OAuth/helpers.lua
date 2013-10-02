@@ -72,16 +72,24 @@ end
 
 local function encode(t, boundary)
 	local r = {}
-	local _t
+	local _t, _tkey, key
 	
 	-- generate a boundary if none was supplied
 	boundary = boundary or gen_boundary()
 	
 	for k,v in pairs(t) do
 		tprintf(r,"--%s\r\n",boundary)
-		_t = type(v)
+
+		_tkey, _t = type(k), type(v)
+
+		if _tkey ~= "string" and _tkey ~= "number" and _tkey ~= "boolean" then
+			return nil, ("unexpected type %s for key %s"):format(_tkey, tostring(k))
+		end
+
 		if _t == "string" then
 			append_data(r, k, v, {})
+		elseif _t == "number" or _t == "boolean" then
+			append_data(r, k, tostring(v), {})
 		elseif _t == "table" then
 			assert(v.data, "invalid input")
 			local extra = {
@@ -91,7 +99,7 @@ local function encode(t, boundary)
 			}
 			append_data(r, k, v.data, extra)
 		else
-			append_data(r, k, tostring(v), {})
+			return nil, ("unexpected type %s for value at key %s"):format(_t, tostring(k))
 		end
 	end
 	tprintf(r, "--%s--\r\n", boundary)
@@ -105,7 +113,10 @@ multipart = {
 	-- TODO: improve docs
 	Request = function(t)
 		local boundary = gen_boundary()
-		local body = encode(t, boundary)
+		local body, err = encode(t, boundary)
+		if not body then
+			return body, err
+		end
 		return {
 			body = body,
 			headers = {
