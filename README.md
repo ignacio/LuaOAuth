@@ -14,6 +14,8 @@ LuaOAuth supports two modes of operation. A "synchronous" mode were you block wh
 "asynchronous" mode where you must supply "callbacks" in order to receive the results. LuaOAuth will behave asynchronously 
 when used in conjunction with [LuaNode][8].
 
+It is tested to work with [Lua 5.1][11], [Lua 5.2][9], [LuaJIT 2.0.2][10] and [LuaNode][8].
+
 ## Usage #
 
 There is some documentation available [on the wiki](https://github.com/ignacio/LuaOAuth/wiki/API-Documentation) and also 
@@ -215,3 +217,5 @@ print("response_body", response_body)
 [7]: http://dev.twitter.com/apps
 [8]: https://github.com/ignacio/luanode
 [9]: https://github.com/catwell/lua-multipart-post
+[10]: http://luajit.org/
+[11]: http://www.lua.org/
