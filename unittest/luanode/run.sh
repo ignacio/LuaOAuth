@@ -1,13 +1,25 @@
-#!/bin/sh
+#!/bin/bash
+set -u
+set -o pipefail
+IFS=$'\n\t'
 
-for i in $( ls -1 --hide=disabled tests ); do
-	echo "\033[32mRunning test case: tests."$i"\033[0m" 
-	luanode run.lua tests.$i
+declare -i has_error=0
+
+for i in $( ls -1 tests/*.lua ); do
+	echo -e "\033[32mRunning test case: tests."$i"\033[0m"
+	luanode_d run.lua $i
 	if [ $? -ne 0 ]
 	then
 		echo -e "\033[1m\033[41mTest case failed: " $i "\033[0m"
-		break;
+		has_error=1
+		#break;
 	fi
 done
 
-echo "Ended without errors"
+if [ $has_error -eq 0 ]; then
+	echo "Ended without errors"
+else
+	echo "Ended with errors"
+fi
+
+exit $has_error
