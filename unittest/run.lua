@@ -2,25 +2,14 @@ require "lunit"
 
 package.path = "../src/?.lua;../src/?/init.lua;".. package.path
 
-local console = require "lunit-console"
 require "echo_lab_madgex_com"
 --require "twitter"
 require "termie"
 require "google"
 require "net_error"
 
--- eventos posibles:
--- begin, done, fail, err, run, pass
 
-lunit.setrunner({
-	fail = function(...)
-		print(...)
-	end,
-	err = function(...)
-		print(...)
-	end,
-})
-
-console.begin()
-lunit.run()
-console.done()
+local stats = lunit.main()
+if stats.errors > 0 or stats.failed > 0 then
+	os.exit(1)
+end
