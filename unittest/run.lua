@@ -4,6 +4,7 @@ package.path = "../src/?.lua;../src/?/init.lua;".. package.path
 
 require "echo_lab_madgex_com"
 --require "twitter"
+require "termie"
 require "google"
 require "net_error"
 
