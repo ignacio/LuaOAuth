@@ -8,7 +8,7 @@
 
 set -eufo pipefail
 
-LUAJIT_BASE="LuaJIT-2.0.3"
+LUAJIT_BASE="LuaJIT-2.0.4"
 
 source .travis/platform.sh
 
