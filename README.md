@@ -14,7 +14,7 @@ LuaOAuth supports two modes of operation. A "synchronous" mode were you block wh
 "asynchronous" mode where you must supply "callbacks" in order to receive the results. LuaOAuth will behave asynchronously 
 when used in conjunction with [LuaNode][8].
 
-It is tested to work with [Lua 5.1][11], [Lua 5.2][9], [LuaJIT 2.0.3][10], [LuaJIT 2.1 (development)][10] and [LuaNode][8].
+It is tested to work with [Lua 5.1][11], [Lua 5.2][9], [LuaJIT 2.0.4][10], [LuaJIT 2.1 (development)][10] and [LuaNode][8].
 
 ## Usage #
 
