@@ -8,7 +8,7 @@ This is an adaptation of Jeffrey Friedl's [Twitter OAuth Authentication Routines
 with Lightroom's code replaced by other libraries (i.e. [LuaSec][2], [LuaSocket][3], etc) and with HMAC-SHA1 calculations 
 done with [LuaCrypto][4] instead of [plain Lua][6].
 
-Most of the code was taken from [Jeffrey Friedl's blog][1]. Multipart encoding was adapted from @catwell's [lua-multipart-post][9].
+Most of the code was taken from [Jeffrey Friedl's blog][1]. Multipart encoding was adapted from [lua-multipart-post][9].
 
 LuaOAuth supports two modes of operation. A "synchronous" mode were you block while you wait for the results or an 
 "asynchronous" mode where you must supply "callbacks" in order to receive the results. LuaOAuth will behave asynchronously 
