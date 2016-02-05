@@ -1,6 +1,7 @@
 # Lua OAuth #
 
 [![Build Status](https://travis-ci.org/ignacio/LuaOAuth.png?branch=master)](https://travis-ci.org/ignacio/LuaOAuth)
+[![Coverage Status](https://coveralls.io/repos/github/ignacio/LuaOAuth/badge.svg?branch=master)](https://coveralls.io/github/ignacio/LuaOAuth?branch=master)
 
 A Lua client library for OAuth 1.0 enabled servers.
 

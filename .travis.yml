@@ -31,6 +31,9 @@ before_install:
       export LUA_DIR="$PWD/lua_install"
       bash .travis/setup_luanode.sh
     fi
+  - pip install cpp-coveralls
+  - luarocks install luacov
+  - luarocks install luacov-coveralls
 
 install:
   - luarocks install lunitx
@@ -45,5 +48,9 @@ script:
     if [ "$LUANODE" = "true" ]; then
       cd unittest/luanode && ./run.sh;
     else
-      cd unittest && lua run.lua;
+      cd unittest && lua -lluacov run.lua;
     fi
+
+after_success:
+  - coveralls -b .. -r .. -i ./src --dump c.report.json
+  - luacov-coveralls -j c.report.json -v
