@@ -1,4 +1,4 @@
-require "lunit"
+local lunit = require "lunit"
 
 package.path = "../src/?.lua;../src/?/init.lua;".. package.path
 

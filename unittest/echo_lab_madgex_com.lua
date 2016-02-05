@@ -1,4 +1,11 @@
-module(..., lunit.testcase, package.seeall)
+local lunit = require "lunit"
+local OAuth = require "OAuth"
+
+if _VERSION >= "Lua 5.2" then
+	_ENV = lunit.module("simple","seeall")
+else
+	module(..., package.seeall, lunit.testcase)
+end
 
 -- see: http://echo.lab.madgex.com/
 function test()

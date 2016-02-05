@@ -7,26 +7,26 @@ local console = require "luanode.console"
 local pairs,type, error, tostring = pairs,type, error, tostring
 local table = table
 
-module((...))
+local _M = {}
 
---- 
+---
 -- Performs the actual http request, using LuaSocket or LuaSec (when using an https scheme)
 -- @param url is the url to request
 -- @param method is the http method (GET, POST, etc)
 -- @param headers are the supplied http headers as a table
--- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded"
 --   or a string (or something that can be converted to a string). In that case, you must supply the Content-Type.
--- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider 
+-- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider
 --   does not support the 'Authorization' header.
--- @param callback is a function to be called with the results of the request when they're available. The callback 
---   receives the following arguments: an (optional) error object, http status code, http response headers, 
+-- @param callback is a function to be called with the results of the request when they're available. The callback
+--   receives the following arguments: an (optional) error object, http status code, http response headers,
 --   http status line and the response body
---   In case of a connection error (host unreacheable, etc), the callback will be called with 
---       { message = <error message>, 
+--   In case of a connection error (host unreacheable, etc), the callback will be called with
+--       { message = <error message>,
 --         code = <error code>
 --       }
 --
-function PerformRequestHelper (self, url, method, headers, arguments, post_body, callback)
+function _M.PerformRequestHelper (self, url, method, headers, arguments, post_body, callback)
 	-- arguments have already been sanitized
 	
 	-- this method screams "refactor me!"
@@ -133,3 +133,5 @@ function PerformRequestHelper (self, url, method, headers, arguments, post_body,
 	
 	return true
 end
+
+return _M

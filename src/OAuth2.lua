@@ -8,11 +8,9 @@ local Ltn12 = require "ltn12"
 local Url = require "socket.url"
 --local Crypto = require "crypto"
 
-module(..., package.seeall)
 
-local moduleMT = {
-	__index = _M
-}
+local Client = {}
+Client.__index = Client
 
 --
 -- Encodes the key-value pairs of a table according the application/x-www-form-urlencoded content type.
@@ -24,14 +22,14 @@ local function url_encode_arguments(arguments)
 	return table.concat(body, "&")
 end
 
--- 
+---
 -- Performs the actual http request, using LuaSocket or LuaSec (when using an https scheme)
 -- @param url is the url to request
 -- @param method is the http method (GET, POST, etc)
 -- @param headers are the supplied http headers as a table
--- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded"
 --   or a string (or something that can be converted to a string). In that case, you must supply the Content-Type.
--- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider 
+-- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider
 --   does not support the 'Authorization' header.
 local function PerformRequestHelper(self, url, method, headers, arguments, post_body)
 	-- Remove oauth_related arguments
@@ -137,11 +135,12 @@ end
 -- (see http://tools.ietf.org/html/rfc5849#section-3)
 -- @param method is the http method (GET, POST, etc)
 -- @param url is the url to request
--- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded"
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
 -- @return the http status code (a number), a table with the response headers, the status line and the response itself
-function PerformRequest(self, method, url, arguments, headers)
+--
+function Client:PerformRequest(method, url, arguments, headers)
 	assert(type(method) == "string", "'method' must be a string")
 	method = method:upper()
 	
@@ -160,7 +159,7 @@ end
 
 
 
-function new(consumer_key, consumer_secret, endpoints, params)
+function Client.new(consumer_key, consumer_secret, endpoints, params)
 	params = params or {}
 	local newInstance = {
 		m_consumer_key = consumer_key,
@@ -185,7 +184,9 @@ function new(consumer_key, consumer_secret, endpoints, params)
 		end
 	end
 	
-	setmetatable(newInstance, moduleMT)
+	setmetatable(newInstance, Client)
 	
 	return newInstance
 end
+
+return Client

@@ -1,6 +1,12 @@
-module(..., lunit.testcase, package.seeall)
-
+local lunit = require "lunit"
 local OAuth = require "OAuth"
+
+if _VERSION >= "Lua 5.2" then
+	_ENV = lunit.module("simple","seeall")
+else
+	module(..., package.seeall, lunit.testcase)
+end
+
 
 local consumer_key = "<your consumer key>"
 local consumer_secret = "<your consumer secret>"

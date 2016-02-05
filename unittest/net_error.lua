@@ -1,6 +1,12 @@
+local lunit = require "lunit"
 local OAuth = require "OAuth"
 
-module(..., lunit.testcase, package.seeall)
+if _VERSION >= "Lua 5.2" then
+	_ENV = lunit.module("simple","seeall")
+else
+	module(..., package.seeall, lunit.testcase)
+end
+
 
 function test()
 	print("\nTest: net error\n")

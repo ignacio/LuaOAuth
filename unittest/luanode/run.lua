@@ -1,8 +1,8 @@
-require "lunit"
+local lunit = require "lunit"
 
 package.path = "../../src/?.lua;../../src/?/init.lua;".. package.path
 
-local console = require "lunit-console"
+local console = require "lunit.console"
 
 -- eventos posibles:
 -- begin, done, fail, err, run, pass

@@ -22,11 +22,9 @@ local error, assert = error, assert
 local pairs, tostring, type, next, setmetatable = pairs, tostring, type, next, setmetatable
 local math = math
 
-module((...))
 
-local moduleMT = {
-	__index = _M
-}
+local Client = {}
+Client.__index = Client
 
 local m_valid_http_methods = {
 	GET = true,
@@ -85,13 +83,13 @@ local function oauth_encode(val)
 end
 
 --
--- Given a url endpoint, a valid Http method, and a table of key/value args, build the query string and sign it, 
+-- Given a url endpoint, a valid Http method, and a table of key/value args, build the query string and sign it,
 -- returning the oauth_signature, the query string and the Authorization header (if supported)
 --
 -- The args should also contain an 'oauth_token_secret' item, except for the initial token request.
 -- See: http://dev.twitter.com/pages/auth#signing-requests
 --
-function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authRealm)
+function Client:Sign(httpMethod, baseUri, arguments, oauth_token_secret, authRealm)
 	assert(m_valid_http_methods[httpMethod], "method '" .. httpMethod .. "' not supported")
 	
 	local consumer_secret = self.m_consumer_secret
@@ -142,7 +140,7 @@ function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authReal
 	local signature_key = oauth_encode(consumer_secret) .. '&' .. oauth_encode(token_secret)
 	--print( ("Signature key: %s"):format(signature_key) )
 	
-	-- Now have our text and key for HMAC-SHA1 signing	
+	-- Now have our text and key for HMAC-SHA1 signing
 	local hmac_binary
 	if isLuaNode then
 		hmac_binary = Crypto.createHmac("sha1", signature_key):update(signature_base_string):final("binary")
@@ -171,16 +169,17 @@ function Sign(self, httpMethod, baseUri, arguments, oauth_token_secret, authReal
 	return oauth_signature, query_string_except_signature .. '&oauth_signature=' .. oauth_signature, oauth_headers
 end
 
--- 
+---
 -- Performs the actual http request, using LuaSocket or LuaSec (when using an https scheme)
 -- @param url is the url to request
 -- @param method is the http method (GET, POST, etc)
 -- @param headers are the supplied http headers as a table
--- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded"
 --   or a string (or something that can be converted to a string). In that case, you must supply the Content-Type.
--- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider 
+-- @param post_body is a string with all parameters (custom + oauth ones) encoded. This is used when the OAuth provider
 --   does not support the 'Authorization' header.
 -- @param callback is only required if running under LuaNode. It is a function to be called when the response is available.
+--
 local function PerformRequestHelper (self, url, method, headers, arguments, post_body, callback)
 		-- Remove oauth_related arguments
 	if type(arguments) == "table" then
@@ -199,18 +198,18 @@ end
 
 
 
---- 
+---
 -- Requests an Unauthorized Request Token (http://tools.ietf.org/html/rfc5849#section-2.1)
--- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded"
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
--- @param callback is only required if running under LuaNode. It is a function to be called with a table with the 
---   obtained token or [false, http status code, http response headers, http status line and the response body] in case 
+-- @param callback is only required if running under LuaNode. It is a function to be called with a table with the
+--   obtained token or [false, http status code, http response headers, http status line and the response body] in case
 --   of an error. The callback is mandatory when running under LuaNode.
--- @return nothing if running under LuaNode (the callback will be called instead). Else it will return a 
+-- @return nothing if running under LuaNode (the callback will be called instead). Else it will return a
 --   table containing the returned values from the server if succesfull or throws an error otherwise.
 --
-function RequestToken(self, arguments, headers, callback)
+function Client:RequestToken(arguments, headers, callback)
 
 	if type(arguments) == "function" then
 		callback = arguments
@@ -265,7 +264,7 @@ function RequestToken(self, arguments, headers, callback)
 	
 		local oauth_instance = self
 		
-		PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body, 
+		PerformRequestHelper(self, endpoint.url, endpoint.method, headers, arguments, post_body,
 			function(err, response_code, response_headers, response_status_line, response_body)
 				if err then
 					callback(err)
@@ -290,12 +289,13 @@ function RequestToken(self, arguments, headers, callback)
 	end
 end
 
--- 
+---
 -- Requests Authorization from the User (http://tools.ietf.org/html/rfc5849#section-2.2)
 -- Builds the URL used to issue a request to the Service Provider's User Authorization URL
 -- @param arguments is an optional table whose keys and values will be encoded and sent in the query string.
 -- @return the fully constructed URL, with oauth_token and custom parameters encoded.
-function BuildAuthorizationUrl(self, arguments)
+--
+function Client:BuildAuthorizationUrl(arguments)
 	local args = { }
 	args = merge(args, arguments)
 	args.oauth_token = (arguments and arguments.oauth_token) or self.m_oauth_token or error("no oauth_token")
@@ -357,16 +357,17 @@ end
 
 ---
 -- Exchanges a request token for an Access token (http://tools.ietf.org/html/rfc5849#section-2.3)
--- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table with whose keys and values will be encoded as "application/x-www-form-urlencoded"
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 -- @param headers is an optional table with http headers to be sent in the request
--- @param callback is only required if running under LuaNode. It is a function to be called with a table with the 
---   obtained token or [false, http status code, http response headers, http status line and the response body] in case 
+-- @param callback is only required if running under LuaNode. It is a function to be called with a table with the
+--   obtained token or [false, http status code, http response headers, http status line and the response body] in case
 --   of an error. The callback is mandatory when running under LuaNode.
--- @return nothing if running under LuaNode (the callback will be called instead). Else, a table containing the returned 
---   values from the server if succesfull or nil plus the http status code (a number), a table with the response 
+-- @return nothing if running under LuaNode (the callback will be called instead). Else, a table containing the returned
+--   values from the server if succesfull or nil plus the http status code (a number), a table with the response
 --   headers, the status line and the response itself
-function GetAccessToken(self, arguments, headers, callback)
+--
+function Client:GetAccessToken(arguments, headers, callback)
 	
 	if type(arguments) == "function" then
 		callback = arguments
@@ -463,16 +464,16 @@ end
 -- (see http://tools.ietf.org/html/rfc5849#section-3)
 -- @param method is the http method (GET, POST, etc)
 -- @param url is the url to request
--- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded"
 --   (when doing a POST) or encoded and sent in the query string (when doing a GET).
 --   It can also be a string with the body to be sent in the request (usually a POST). In that case, you need to supply
 --   a valid Content-Type header.
 -- @param headers is an optional table with http headers to be sent in the request
 -- @param callback is only required if running under LuaNode. It is a function to be called with an (optional) error object and the result of the request.
--- @return nothing if running under Luanode (the callback will be called instead). Else, the http status code 
+-- @return nothing if running under Luanode (the callback will be called instead). Else, the http status code
 --   (a number), a table with the response headers, the status line and the response itself.
 --
-function PerformRequest(self, method, url, arguments, headers, callback)
+function Client:PerformRequest(method, url, arguments, headers, callback)
 	assert(type(method) == "string", "'method' must be a string")
 	method = method:upper()
 	
@@ -501,18 +502,18 @@ end
 
 
 ---
--- After retrieving an access token, this method is used to build properly authenticated requests, allowing the user 
+-- After retrieving an access token, this method is used to build properly authenticated requests, allowing the user
 -- to send them with the method she seems fit.
 -- (see http://tools.ietf.org/html/rfc5849#section-3)
 -- @param method is the http method (GET, POST, etc)
 -- @param url is the url to request
--- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded" 
+-- @param arguments is an optional table whose keys and values will be encoded as "application/x-www-form-urlencoded"
 --  (when doing a POST) or encoded and sent in the query string (when doing a GET).
 --   It can also be a string with the body to be sent in the request (usually a POST). In that case, you need to supply
 --   a valid Content-Type header.
 -- @param headers is an optional table with http headers to be sent in the request
 -- @return a table with the headers, a table with the (cleaned up) arguments and the request body.
-function BuildRequest(self, method, url, arguments, headers)
+function Client:BuildRequest(method, url, arguments, headers)
 	assert(type(method) == "string", "'method' must be a string")
 	method = method:upper()
 	
@@ -557,43 +558,44 @@ end
 
 --
 -- Sets / gets oauth_token
-function SetToken(self, value)
+function Client:SetToken(value)
 	self.m_oauth_token = value
 end
-function GetToken(self)
+function Client:GetToken()
 	return self.m_oauth_token
 end
 
 --
 -- Sets / gets oauth_token_secret
-function SetTokenSecret(self, value)
+function Client:SetTokenSecret(value)
 	self.m_oauth_token_secret = value
 end
-function GetTokenSecret(self)
+function Client:GetTokenSecret()
 	return self.m_oauth_token_secret
 end
 
 --
 -- Sets / gets oauth_verifier
-function SetVerifier(self, value)
+function Client:SetVerifier(value)
 	self.m_oauth_verifier = value
 end
-function GetVerifier(self)
+function Client:GetVerifier()
 	return self.m_oauth_verifier
 end
 
---
+---
 -- Builds a new OAuth client instance
 -- @param consumer_key is the public key
 -- @param consumer_secret is the private key
 -- @param endpoints is a table containing the URLs where the Service Provider exposes its endpoints
---   each endpoint is either a string (its url, the method is POST by default) or a table, with the url in the array part and the method 
+--   each endpoint is either a string (its url, the method is POST by default) or a table, with the url in the array part and the method
 --   in the 'method' field.
 -- @param params is an optional table with additional parameters:
 --    @field SignatureMethod indicates the signature method used by the server (PLAINTEXT, RSA-SHA1, HMAC-SHA1 (default) )
 --    @field UseAuthHeaders indicates if the server supports oauth_xxx parameters to be sent in the 'Authorization' HTTP header (true by default)
 -- @return the http status code (a number), a table with the response headers and the response itself
-function new(consumer_key, consumer_secret, endpoints, params)
+--
+function Client.new(consumer_key, consumer_secret, endpoints, params)
 	params = params or {}
 	local newInstance = {
 		m_consumer_key = consumer_key,
@@ -618,7 +620,9 @@ function new(consumer_key, consumer_secret, endpoints, params)
 		end
 	end
 	
-	setmetatable(newInstance, moduleMT)
+	setmetatable(newInstance, Client)
 	
 	return newInstance
 end
+
+return Client

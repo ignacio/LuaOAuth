@@ -1,21 +1,18 @@
-language: c
+language: python # Need python environment for pip
 
-sudo: false
+sudo: false # Use container-based infrastructure
 
 env:
-  global:
-    - LUAROCKS=2.2.2
-  matrix:
-    - LUA=lua5.1
-    - LUA=lua5.2
-    #- LUA=lua5.3 (luacrypto does not support Lua 5.3 yet)
-    - LUA=luajit     # latest stable version (2.0.3)
-    - LUA=luajit2.0  # current head of 2.0 branch
-    - LUA=luajit2.1  # current head of 2.1 branch
+  - LUA="lua=5.1"
+  - LUA="lua=5.2"
+  # #- LUA="lua=5.3" (luacrypto does not support Lua 5.3 yet)
+  - LUA="luajit=2.0"
+  - LUA="luajit=2.1"
+
 
 matrix:
   include:
-    - env: LUA=lua5.1 LUANODE=true
+    - env: LUA="lua=5.1" LUANODE=true
       addons:
         apt:
           packages:
@@ -24,18 +21,28 @@ matrix:
             - libboost-date-time-dev
             - libboost-thread-dev
 
+
 before_install:
-  - source .travis/setenv_lua.sh
+  - pip install hererocks
+  - hererocks lua_install --luarocks ^ --$LUA
+  - export PATH=$PATH:$PWD/lua_install/bin
+  - |
+    if [ "$LUANODE" == "true" ]; then
+      export LUA_DIR="$PWD/lua_install"
+      bash .travis/setup_luanode.sh
+    fi
 
 install:
-  - luarocks install lunit
+  - luarocks install lunitx
   - luarocks install luacrypto
-  - luarocks install http://luarocks.org/repositories/rocks-scm/luasocket-3.0rc1-1.rockspec
+  - luarocks install luasocket 3.0rc1-2
+  #- luarocks install luasocket --only-server=http://luarocks.org/repositories/rocks-scm
   - luarocks install lbase64
-  - luarocks install http://luarocks.org/repositories/rocks-scm/luasec-scm-1.rockspec OPENSSL_LIBDIR=/usr/lib/x86_64-linux-gnu
+  - luarocks install luasec --server=https://luarocks.org/manifests/ignacio OPENSSL_LIBDIR=/usr/lib/x86_64-linux-gnu
 
 script:
-  - if [ "$LUANODE" = "true" ]; then
+  - |
+    if [ "$LUANODE" = "true" ]; then
       cd unittest/luanode && ./run.sh;
     else
       cd unittest && lua run.lua;

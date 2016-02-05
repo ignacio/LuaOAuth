@@ -13,11 +13,11 @@ else
 	Url = require "socket.url"
 end
 
-module((...))
+local _M = {}
 
 --
 -- Encodes the key-value pairs of a table according the application/x-www-form-urlencoded content type.
-url_encode_arguments = (isLuaNode and Qs.url_encode_arguments) or function(arguments)
+_M.url_encode_arguments = (isLuaNode and Qs.url_encode_arguments) or function(arguments)
 	local body = {}
 	for k,v in pairs(arguments) do
 		body[#body + 1] = Url.escape(tostring(k)) .. "=" .. Url.escape(tostring(v))
@@ -107,7 +107,7 @@ local function encode(t, boundary)
 end
 
 
-multipart = {
+_M.multipart = {
 	---
 	-- t is a table with the data to be encoded as multipart/form-data
 	-- TODO: improve docs
@@ -128,3 +128,5 @@ multipart = {
 }
 
 end	-- end of multipart scope
+
+return _M
