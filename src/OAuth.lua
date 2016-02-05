@@ -2,17 +2,14 @@ local Base64 = require "base64"
 local Crypto
 local core
 local isLuaNode
-local unescape
 
 if process then
 	Crypto = require "luanode.crypto"
 	core = require "OAuth.coreLuaNode"
-	unescape = require "luanode.querystring".url_decode
 	isLuaNode = true
 else
 	Crypto = require "crypto"
 	core = require "OAuth.coreLuaSocket"
-	unescape = require "socket.url".unescape
 	isLuaNode = false
 end
 
@@ -80,6 +77,15 @@ local function oauth_encode(val)
 	return val:gsub('[^-._~a-zA-Z0-9]', function(letter)
 		return string.format("%%%02x", letter:byte()):upper()
 	end)
+end
+
+---
+-- Taken from LuaSocket (socket.url)
+--
+local function url_unescape(s)
+    return (string.gsub(s, "%%(%x%x)", function(hex)
+        return string.char(base.tonumber(hex, 16))
+    end))
 end
 
 --
@@ -252,7 +258,7 @@ function Client:RequestToken(arguments, headers, callback)
 		for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 			--print( ("key=%s, value=%s"):format(key, value) )
 			-- The response parameters are url-encodeded per RFC 5849 so we need to decode them
-			values[key] = unescape(value)
+			values[key] = url_unescape(value)
 		end
 	
 		self.m_oauth_token_secret = values.oauth_token_secret
@@ -278,7 +284,7 @@ function Client:RequestToken(arguments, headers, callback)
 				local values = {}
 				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 					--print( ("key=%s, value=%s"):format(key, value) )
-					values[key] = unescape(value)
+					values[key] = url_unescape(value)
 				end
 		
 				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
@@ -420,7 +426,7 @@ function Client:GetAccessToken(arguments, headers, callback)
 		local values = {}
 		for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 			--print( ("key=%s, value=%s"):format(key, value) )
-			values[key] = unescape(value)
+			values[key] = url_unescape(value)
 		end
 		self.m_oauth_token_secret = values.oauth_token_secret
 		self.m_oauth_token = values.oauth_token
@@ -447,7 +453,7 @@ function Client:GetAccessToken(arguments, headers, callback)
 				local values = {}
 				for key, value in string.gmatch(response_body, "([^&=]+)=([^&=]*)&?" ) do
 					--print( ("key=%s, value=%s"):format(key, value) )
-					values[key] = unescape(value)
+					values[key] = url_unescape(value)
 				end
 		
 				oauth_instance.m_oauth_token_secret = values.oauth_token_secret
