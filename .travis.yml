@@ -52,5 +52,5 @@ script:
     fi
 
 after_success:
-  - coveralls -b .. -r .. -i ./src --dump c.report.json
-  - luacov-coveralls -j c.report.json -v
+  #- coveralls -b .. -r .. -i ./src --dump c.report.json
+  - luacov-coveralls -j c.report.json -v -r .. -e ../lua_install
