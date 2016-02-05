@@ -17,6 +17,7 @@ end
 local table, string, os, print = table, string, os, print
 local error, assert = error, assert
 local pairs, tostring, type, next, setmetatable = pairs, tostring, type, next, setmetatable
+local tonumber = tonumber
 local math = math
 
 
@@ -84,7 +85,7 @@ end
 --
 local function url_unescape(s)
     return (string.gsub(s, "%%(%x%x)", function(hex)
-        return string.char(base.tonumber(hex, 16))
+        return string.char(tonumber(hex, 16))
     end))
 end
 
